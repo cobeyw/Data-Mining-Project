@@ -48,7 +48,7 @@ class LinearRegression() :
         d_bias = - 2 * np.sum(self.Y - Y_pred) / self.n_obs 
           
         # update weights and bias
-        self. weights = self.weights - (self.l_rate * d_weights)
+        self.weights = self.weights - (self.l_rate * d_weights)
         self.bias = self.bias - (self.l_rate * d_bias) 
 
       
