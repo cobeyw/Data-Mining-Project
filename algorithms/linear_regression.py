@@ -1,8 +1,9 @@
 """ Implements a class that performs Ordinary Least Squares (OLS) Linear Regression.
     NOTE: this can only perform LR for a single target variable.
 """
-from metrics import rmse, r_squared
+from utils import rmse, r_squared
 import numpy as np
+from matplotlib import pyplot as plt
   
 # LinearRegression class
 class LinearRegression() : 
@@ -69,3 +70,27 @@ class LinearRegression() :
             print(f"Expected array of shape (m, {self.n_feats}), got array of shape {X.shape}")
             return None
         return X.dot(self.weights) + self.bias
+    
+if __name__ == "__main__":
+    # create sample data
+    n = 100
+    m = 1/2
+    b = 3
+    np.random.seed(123)
+    noise = np.random.normal(0,1,n)
+    x = [x for x in range(n)]
+    y = (m*x) + b + noise
+
+    # create model
+    lm = LinearRegression(l_rate=1e-3, n_iter=1e3)
+
+    # fit model
+    lm.fit(x, y)
+
+    # predict
+    y_pred = lm.predict(x)
+
+    plt.plot(x, y, label="Ground Truth")
+    plt.plot(x, y_pred, label="Prediction")
+    plt.legend()
+    plt.show()
