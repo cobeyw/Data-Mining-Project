@@ -4,6 +4,8 @@
 from utils import rmse, r_squared
 import numpy as np
 from matplotlib import pyplot as plt
+import pandas as pd
+from sklearn.model_selection import train_test_split
   
 # LinearRegression class
 class LinearRegression() : 
@@ -15,18 +17,21 @@ class LinearRegression() :
         such that y_pred = sum(Wi * Xi) + b.
 
         Args:
-            X (np.array): numpy array of shape (n_observations, n_features).
-            Y (np.array): numpy array with true values of shape (n_observations,1).
-            weights (np.array): numpy with starting values for weights,
-                of shape (n_features,1), defaults to zeros.
+            X (np.array): numpy array of shape (n_observations, n_features)
+            Y (np.array): numpy array with true values of shape (n_observations,)
             bias (float): bias value for loss function, defaults to 0
     """         
-    def fit(self, X, Y, weights=None, bias=0) : 
+    def fit(self, X, Y, bias=0) : 
         # get the number of observations and features
-        self.n_obs, self.n_feat = X.shape 
+        self.n_obs = X.shape[0]
+        self.n_feat = 0
+        if(len(X.shape) < 2):
+            self.n_feat = 1
+        else:
+            self.n_feat = X.shape[1]
           
         # get the initial weights
-        self.weights = np.zeros(self.n_obs) if weights is None else weights
+        self.weights = np.zeros(self.n_feat)
 
         # record bias and X/Y arrays
         self.bias = bias
@@ -62,7 +67,7 @@ class LinearRegression() :
             n == self.n_feat.
     
     Returns:
-        np.array: array of shape(m, 1) with predicted values,
+        np.array: array of shape(m,) with predicted values,
             None if shape is incorrect. 
     """
     def predict(self, X) : 
@@ -74,23 +79,31 @@ class LinearRegression() :
 if __name__ == "__main__":
     # create sample data
     n = 100
-    m = 1/2
-    b = 3
+    m = 0.5
+    b = 0
     np.random.seed(123)
     noise = np.random.normal(0,1,n)
-    x = [x for x in range(n)]
-    y = (m*x) + b + noise
+    x = np.arange(n)
+    y = (x*m) + b + noise
+    df = pd.DataFrame({"X":x, "Y":y})
+    print(df)
+    X = df.iloc[:,:-1].values
+    Y = df.iloc[:,1].values
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=0)
 
     # create model
-    lm = LinearRegression(l_rate=1e-3, n_iter=1e3)
+    lm = LinearRegression(l_rate=0.0001, n_iter=1000)
 
     # fit model
-    lm.fit(x, y)
+    lm.fit(x_train, y_train)
 
     # predict
-    y_pred = lm.predict(x)
+    y_pred = lm.predict(x_test)
 
-    plt.plot(x, y, label="Ground Truth")
-    plt.plot(x, y_pred, label="Prediction")
+    obs = np.arange(y_pred.shape[0])
+    mets = f"RMSE = {rmse(y_test, y_pred):.4f}, R^2 = {r_squared(y_test, y_pred):.4f}"
+    plt.title(mets)
+    plt.scatter(obs, sorted(y_test), color="blue", label="Ground Truth")
+    plt.plot(obs, sorted(y_pred), color="red", label="predicted")
     plt.legend()
     plt.show()
