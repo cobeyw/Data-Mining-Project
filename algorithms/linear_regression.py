@@ -86,7 +86,6 @@ if __name__ == "__main__":
     x = np.arange(n)
     y = (x*m) + b + noise
     df = pd.DataFrame({"X":x, "Y":y})
-    print(df)
     X = df.iloc[:,:-1].values
     Y = df.iloc[:,1].values
     x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=0)
