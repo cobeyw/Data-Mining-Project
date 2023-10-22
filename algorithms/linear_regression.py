@@ -1,7 +1,8 @@
 """ Implements a class that performs Ordinary Least Squares (OLS) Linear Regression.
     NOTE: this can only perform LR for a single target variable.
 """
-import numpy as np 
+from metrics import rmse, r_squared
+import numpy as np
   
 # LinearRegression class
 class LinearRegression() : 
@@ -67,4 +68,4 @@ class LinearRegression() :
         if X.shape[1] != self.n_feat:
             print(f"Expected array of shape (m, {self.n_feats}), got array of shape {X.shape}")
             return None
-        return X.dot(self.weights) + self.bias 
+        return X.dot(self.weights) + self.bias
