@@ -12,7 +12,7 @@ from sklearn.linear_model import LinearRegression as LinReg
 class LinearRegression() : 
     def __init__(self, l_rate, n_iter) : 
         self.l_rate = l_rate 
-        self.n_iter = n_iter 
+        self.n_iter = n_iter
           
     """Adjusts weights to fit Y to some input data X.
         such that y_pred = sum(Wi * Xi) + b.
@@ -49,7 +49,9 @@ class LinearRegression() :
     """ 
     def __update_weights(self) : 
         # get predictions for this iteration
-        Y_pred = self.predict(self.X) 
+        Y_pred = self.predict(self.X)
+
+        print(f"Training RMSE = {rmse(self.Y, Y_pred):.4f}")
           
         # weights and bias gradients
         d_weights = - (2 * (self.X.T).dot(self.Y - Y_pred)) / self.n_obs 
@@ -76,7 +78,26 @@ class LinearRegression() :
             print(f"Expected array of shape (m, {self.n_feats}), got array of shape {X.shape}")
             return None
         return X.dot(self.weights) + self.bias
-    
+
+"""
+Performs cross-validation using linear regression
+
+Args:
+    X (pd.DataFrame): input data
+    Y (pd.DataFrame): target data
+    l_rates (List[float]): list of learning rates to try
+    n_iters (List[int]): list of number of iterations to try
+    func (function): scoring function to pick best model, must
+        have signature func(y_true, y_pred) -> float
+    val_size (float): validation data proportion, between (0, 1),
+        defaults to 0.2
+
+Returns:
+    (float, int): best learning rate and n_iter combination
+"""  
+def lin_reg_cv(X, Y, l_rates, n_iters, func, val_size=0.2):
+    pass
+
 if __name__ == "__main__":
     # create sample data
     n = 100
