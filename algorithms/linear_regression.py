@@ -6,6 +6,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import pandas as pd
 from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression as LinReg
   
 # LinearRegression class
 class LinearRegression() : 
@@ -90,19 +91,23 @@ if __name__ == "__main__":
     Y = df.iloc[:,1].values
     x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=0)
 
-    # create model
+    # create models
     lm = LinearRegression(l_rate=0.0001, n_iter=1000)
+    skl_lm = LinReg()
 
     # fit model
     lm.fit(x_train, y_train)
+    skl_lm.fit(x_train, y_train)
 
     # predict
     y_pred = lm.predict(x_test)
+    skl_pred = skl_lm.predict(x_test)
 
     obs = np.arange(y_pred.shape[0])
     mets = f"RMSE = {rmse(y_test, y_pred):.4f}, R^2 = {r_squared(y_test, y_pred):.4f}"
     plt.title(mets)
     plt.scatter(obs, sorted(y_test), color="blue", label="Ground Truth")
     plt.plot(obs, sorted(y_pred), color="red", label="predicted")
+    plt.scatter(obs, sorted(skl_pred), color="green", label="sklearn model")
     plt.legend()
     plt.show()
