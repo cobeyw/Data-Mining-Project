@@ -7,6 +7,7 @@ from matplotlib import pyplot as plt
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression as LinReg
+from itertools import product
   
 # LinearRegression class
 class LinearRegression() : 
@@ -50,8 +51,6 @@ class LinearRegression() :
     def __update_weights(self) : 
         # get predictions for this iteration
         Y_pred = self.predict(self.X)
-
-        print(f"Training RMSE = {rmse(self.Y, Y_pred):.4f}")
           
         # weights and bias gradients
         d_weights = - (2 * (self.X.T).dot(self.Y - Y_pred)) / self.n_obs 
@@ -80,23 +79,37 @@ class LinearRegression() :
         return X.dot(self.weights) + self.bias
 
 """
-Performs cross-validation using linear regression
-
+Performs cross-validation using linear regression and
+    picks the best combo based on R^2
 Args:
     X (pd.DataFrame): input data
     Y (pd.DataFrame): target data
     l_rates (List[float]): list of learning rates to try
     n_iters (List[int]): list of number of iterations to try
-    func (function): scoring function to pick best model, must
-        have signature func(y_true, y_pred) -> float
     val_size (float): validation data proportion, between (0, 1),
         defaults to 0.2
 
 Returns:
     (float, int): best learning rate and n_iter combination
 """  
-def lin_reg_cv(X, Y, l_rates, n_iters, func, val_size=0.2):
-    pass
+def lin_reg_cv(X, Y, l_rates, n_iters, val_size=0.2):
+    x_train, x_val, y_train, y_val = train_test_split(X, Y, test_size=val_size, random_state=0)
+    params = list(product(l_rates, n_iters))
+    best_lr = 0
+    best_ni = 0
+    best_rsq = -1e9
+
+    for lr, ni in params:
+        print(f"Testing lr = {lr}, ni = {ni}")
+        lm = LinearRegression(l_rate=lr, n_iter=int(ni))
+        lm.fit(x_train, y_train)
+        y_pred = lm.predict(x_val)
+        rsq = r_squared(y_val, y_pred)
+        if(rsq >= best_rsq):
+            best_lr = lr
+            best_ni = ni
+    
+    return best_lr, best_ni
 
 if __name__ == "__main__":
     # create sample data
