@@ -79,8 +79,8 @@ if __name__ == "__main__":
           "mean_gust","median_gust"]
 
     csv_path = "data\\tornado_wind_data.csv"
-    target = input("Choose target col: ") #"inj"
-    outlier_cutoff = int(input("Choose outlier max cutoff (-1 for None): ")) #175
+    target = input("Choose target col: ") #
+    outlier_cutoff = int(input("Choose outlier max cutoff (-1 for None): ")) #inj = 175, loss = 2e7
     outlier_cutoff = None if outlier_cutoff < 0 else outlier_cutoff
 
     df = process_csv(csv_path, target, outlier_cutoff)
@@ -88,7 +88,7 @@ if __name__ == "__main__":
     # looking at the spread of target so we can shape the training data
     # to have about an equal number of tornados with and without target 
     # values = 0
-    ratio = float(input("Choose zero/nonzero target values ratio:"))
+    ratio = float(input("Choose zero/nonzero target values ratio: "))
     df = fix_target_spread(df, target, ratio)
 
     X = df[x_cols]
@@ -101,7 +101,7 @@ if __name__ == "__main__":
     lrs = np.linspace(1e-5, 1e-3, 4)
     nis = np.linspace(50000, 200000, 4)
 
-    run_cv = bool(input("Run cross-validation to find best params (1=Yes,0=No)? "))
+    run_cv = bool(int(input("Run cross-validation to find best params (1=Yes,0=No)? ")))
 
     if run_cv:
         lr, ni = lin_reg_cv(X, Y, lrs, nis)
@@ -110,10 +110,12 @@ if __name__ == "__main__":
         lr, ni = (0.001, 200000)
     
     # fit model
+    print(f"Fitting best model for {target}")
     lm = LinearRegression(l_rate=lr, n_iter=int(ni))
     lm.fit(x_train, y_train)
 
     # predict
+    print("Testing model")
     y_train_pred = lm.predict(x_train)
     y_pred = lm.predict(x_test)
     train_err = rmse(y_train, y_train_pred)
@@ -126,7 +128,7 @@ if __name__ == "__main__":
     plt.title(mets)
     plt.scatter(obs, sorted(y_test), color="blue", label="Ground Truth")
     plt.plot(obs, sorted(y_pred), color="red", label="predicted")
-    plt.xlim((0,100))
+    #plt.xlim((0,100))
     plt.legend()
     plt.show()
 
@@ -135,8 +137,8 @@ if __name__ == "__main__":
         lr_str = str(lr).replace(".", "-")
         r_str = str(ratio).replace(".","-")
         name = f"lr_{lr_str}_ni_{ni}_r_{r_str}"
-        model_file = "models\\" + name + "_model.pkl"
-        norm_file = "models\\" + name + "_norm.pkl"
+        model_file = "models\\" + name + f"_{target}_model.pkl"
+        norm_file = "models\\" + name + f"_{target}_norm.pkl"
         with open(model_file, "wb") as f:
             pickle.dump(lm, f)
         with open(norm_file, "wb") as f:
