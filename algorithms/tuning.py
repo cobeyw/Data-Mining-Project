@@ -28,7 +28,8 @@ def process_csv(csv_path, target, outlier_cutoff):
     df = df[df.mag != -9]
     df[na_cols] = df[na_cols].fillna(0)
     nrow_before = df.shape[0]
-    df = df[df[target] <= outlier_cutoff]
+    if outlier_cutoff is not None:
+        df = df[df[target] <= outlier_cutoff]
     nrow_after = df.shape[0]
     row_rem = nrow_before - nrow_after
     rem_pct = 100.0 * (row_rem / nrow_before)
@@ -69,7 +70,7 @@ def fix_target_spread(df, target, ratio):
     nrow = df.shape[0]
     tg_zero_pct = 100.0*(tg_zero/nrow)
     print(f"{nrow} rows after")
-    print(f"{no_inj} zero-valued rows, {tg_zero_pct}% of data")
+    print(f"{tg_zero} zero-valued rows, {tg_zero_pct}% of data")
     return df
 
 if __name__ == "__main__":
@@ -125,13 +126,13 @@ if __name__ == "__main__":
     plt.legend()
     plt.show()
 
-    save_model = bool(input("Save model/normalizer (1=Yes, 0=No)? "))
+    save_model = bool(int(input("Save model/normalizer (1=Yes, 0=No)? ")))
     if save_model:
         lr_str = str(lr).replace(".", "-")
         r_str = str(ratio).replace(".","-")
         name = f"lr_{lr_str}_ni_{ni}_r_{r_str}"
-        model_file = name + "_model.pkl"
-        norm_file = name + "_norm.pkl"
+        model_file = "models\\" + name + "_model.pkl"
+        norm_file = "models\\" + name + "_norm.pkl"
         with open(model_file, "wb") as f:
             pickle.dump(lm, f)
         with open(norm_file, "wb") as f:
