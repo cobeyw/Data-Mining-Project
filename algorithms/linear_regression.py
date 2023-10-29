@@ -14,6 +14,8 @@ class LinearRegression() :
     def __init__(self, l_rate, n_iter) : 
         self.l_rate = l_rate 
         self.n_iter = n_iter
+        self.train_rmse = None
+        self.train_r2 = None
           
     """Adjusts weights to fit Y to some input data X.
         such that y_pred = sum(Wi * Xi) + b.

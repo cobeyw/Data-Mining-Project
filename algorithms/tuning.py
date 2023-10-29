@@ -116,6 +116,10 @@ if __name__ == "__main__":
     # predict
     y_train_pred = lm.predict(x_train)
     y_pred = lm.predict(x_test)
+    train_err = rmse(y_train, y_train_pred)
+    train_r2 = r_squared(y_train, y_train_pred)
+    lm.train_r2 = train_r2
+    lm.train_rmse = train_err
 
     obs = np.arange(y_test.shape[0])
     mets = f"RMSE = {rmse(y_test, y_pred):.4f}, R^2 = {r_squared(y_test, y_pred):.4f}"
