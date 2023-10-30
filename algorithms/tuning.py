@@ -107,7 +107,7 @@ if __name__ == "__main__":
         lr, ni = lin_reg_cv(X, Y, lrs, nis)
         print(f"Best: lr = {lr}, n_iter = {ni}")
     else:
-        lr, ni = (0.001, 200000)
+        lr, ni = (0.00034, 100000)
     
     # fit model
     print(f"Fitting best model for {target}")
@@ -122,6 +122,7 @@ if __name__ == "__main__":
     train_r2 = r_squared(y_train, y_train_pred)
     lm.train_r2 = train_r2
     lm.train_rmse = train_err
+    print(f"Model performance: train RMSE = {train_err}, train R^2 = {train_r2}")
 
     obs = np.arange(y_test.shape[0])
     mets = f"RMSE = {rmse(y_test, y_pred):.4f}, R^2 = {r_squared(y_test, y_pred):.4f}"

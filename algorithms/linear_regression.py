@@ -110,6 +110,7 @@ def lin_reg_cv(X, Y, l_rates, n_iters, val_size=0.2):
         if(rsq >= best_rsq):
             best_lr = lr
             best_ni = ni
+            best_rsq = rsq
     
     return best_lr, best_ni
 
