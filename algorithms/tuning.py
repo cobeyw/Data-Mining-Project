@@ -6,6 +6,9 @@ from utils import rmse, r_squared, ZNormalizer
 from matplotlib import pyplot as plt
 import pickle
 
+CSV_PATH = "data\\tornado_wind_data.csv"
+
+
 """
 Preprocesses csv into cleaned df by deleting
 mag == -9 rows, removing outliers, and filling
@@ -78,12 +81,11 @@ if __name__ == "__main__":
           "slat","elat","abs_dlon","abs_dlat","max_gust","min_gust","sd_gust",
           "mean_gust","median_gust"]
 
-    csv_path = "data\\tornado_wind_data.csv"
     target = input("Choose target col: ") #
     outlier_cutoff = int(input("Choose outlier max cutoff (-1 for None): ")) #inj = 175, loss = 2e7
     outlier_cutoff = None if outlier_cutoff < 0 else outlier_cutoff
 
-    df = process_csv(csv_path, target, outlier_cutoff)
+    df = process_csv(CSV_PATH, target, outlier_cutoff)
 
     # looking at the spread of target so we can shape the training data
     # to have about an equal number of tornados with and without target 
@@ -113,6 +115,10 @@ if __name__ == "__main__":
     print(f"Fitting best model for {target}")
     lm = LinearRegression(l_rate=lr, n_iter=int(ni))
     lm.fit(x_train, y_train)
+    lm.x_cols = x_cols
+    lm.target = target
+    lm.outlier_cutoff = outlier_cutoff
+    lm.target_ratio = ratio
 
     # predict
     print("Testing model")
@@ -129,6 +135,7 @@ if __name__ == "__main__":
     plt.title(mets)
     plt.scatter(obs, sorted(y_test), color="blue", label="Ground Truth")
     plt.plot(obs, sorted(y_pred), color="red", label="predicted")
+    plt.ylabel(target)
     #plt.xlim((0,100))
     plt.legend()
     plt.show()
@@ -137,7 +144,7 @@ if __name__ == "__main__":
     if save_model:
         lr_str = str(lr).replace(".", "-")
         r_str = str(ratio).replace(".","-")
-        name = f"lr_{lr_str}_ni_{ni}_r_{r_str}"
+        name = f"lr_{lr_str}_ni_{int(ni)}_r_{r_str}"
         model_file = "models\\" + name + f"_{target}_model.pkl"
         norm_file = "models\\" + name + f"_{target}_norm.pkl"
         with open(model_file, "wb") as f:
