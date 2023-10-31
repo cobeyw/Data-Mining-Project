@@ -109,7 +109,7 @@ if __name__ == "__main__":
         lr, ni = lin_reg_cv(X, Y, lrs, nis)
         print(f"Best: lr = {lr}, n_iter = {ni}")
     else:
-        lr, ni = (0.00034, 100000)
+        lr, ni = (0.00034, 50000)
     
     # fit model
     print(f"Fitting best model for {target}")
