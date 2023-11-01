@@ -14,8 +14,8 @@ class LinearRegression() :
     def __init__(self, l_rate, n_iter): 
         self.l_rate = l_rate 
         self.n_iter = n_iter
-        self.train_rmse = None
-        self.train_r2 = None
+        self.cv_rmse = None
+        self.cv_r2 = None
         self.outlier_cutoff = -1
         self.target_ratio = None
         self.x_cols = None
@@ -39,12 +39,12 @@ class LinearRegression() :
             self.n_feat = X.shape[1]
           
         # get the initial weights
-        self.weights = np.zeros(self.n_feat)
+        self.weights = np.zeros(self.n_feat, dtype="float32")
 
         # record bias and X/Y arrays
         self.bias = bias
-        self.X = X 
-        self.Y = Y 
+        self.X = X.astype(np.float32)
+        self.Y = Y.astype(np.float32) 
         
         # run iterations updating the weights
         for i in range(self.n_iter):
@@ -85,7 +85,7 @@ class LinearRegression() :
         return X.dot(self.weights) + self.bias
 
 """
-Performs cross-validation using linear regression and
+Performs k-folds cross-validation using linear regression and
     picks the best combo based on R^2
 Args:
     X (pd.DataFrame): input data
@@ -96,27 +96,35 @@ Args:
         defaults to 0.2
 
 Returns:
-    (float, int): best learning rate and n_iter combination
+    Tuple(float, int), float, float : best learning rate and n_iter 
+        combination, along with CV R^2 and RMSE
 """  
-def lin_reg_cv(X, Y, l_rates, n_iters, val_size=0.2):
-    x_train, x_val, y_train, y_val = train_test_split(X, Y, test_size=val_size, random_state=0)
+def lin_reg_cv(X, Y, l_rates, n_iters, val_size=0.2, k=3):
     params = list(product(l_rates, n_iters))
-    best_lr = 0
-    best_ni = 0
-    best_rsq = -1e9
+    best_r2 = 1e-9
+    best_params = None
+    best_rmse = None
 
     for lr, ni in params:
-        print(f"Testing lr = {lr}, ni = {ni}")
-        lm = LinearRegression(l_rate=lr, n_iter=int(ni))
-        lm.fit(x_train, y_train)
-        y_pred = lm.predict(x_val)
-        rsq = r_squared(y_val, y_pred)
-        if(rsq >= best_rsq):
-            best_lr = lr
-            best_ni = ni
-            best_rsq = rsq
-    
-    return best_lr, best_ni
+        errs = float(0)
+        r2s = float(0)
+        for i in range(k):
+            x_train, x_val, y_train, y_val = train_test_split(X, Y, test_size=val_size)
+            print(f"Fold {i+1}, params: lr = {lr}, ni = {ni}")
+            lm = LinearRegression(l_rate=lr, n_iter=int(ni))
+            lm.fit(x_train, y_train)
+            y_pred = lm.predict(x_val)
+            r2s += (r_squared(y_val, y_pred))
+            errs += (rmse(y_val, y_pred))
+        avg_rmse = errs / k
+        avg_r2 = r2s / k
+        print(f"Avg RMSE = {avg_rmse: .4f}, Avg R^2 = {avg_r2: .4f}")
+        if avg_r2 > best_r2:
+            best_params = (lr, ni)
+            best_r2 = avg_r2
+            best_rmse = avg_rmse
+
+    return best_params, best_r2, best_rmse 
 
 if __name__ == "__main__":
     # create sample data

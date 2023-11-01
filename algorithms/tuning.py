@@ -2,7 +2,7 @@ from linear_regression import LinearRegression, lin_reg_cv
 import pandas as pd
 from sklearn.model_selection import train_test_split
 import numpy as np
-from utils import rmse, r_squared, ZNormalizer
+from utils import rmse, r_squared, ZNormalizer, encode_states, encode_loss
 from matplotlib import pyplot as plt
 import pickle
 
@@ -37,6 +37,10 @@ def process_csv(csv_path, target, outlier_cutoff):
     row_rem = nrow_before - nrow_after
     rem_pct = 100.0 * (row_rem / nrow_before)
     print(f"Removed {row_rem} rows with outliers, {rem_pct:.2f}% of original data.")
+    print("Encoding states")
+    df = encode_states(df)
+    print("Encoding loss")
+    df = encode_loss(df)
     return df
 
 """
@@ -74,10 +78,13 @@ def fix_target_spread(df, target, ratio):
     tg_zero_pct = 100.0*(tg_zero/nrow)
     print(f"{nrow} rows after")
     print(f"{tg_zero} zero-valued rows, {tg_zero_pct}% of data")
+    if df[target].max() >= 10000:
+        print(f"Taking log10({target}+1)")
+        df[target] = np.log10(df[target]+1)
     return df
 
 if __name__ == "__main__":
-    x_cols = ["mo","dy","mag","len","wid","area","seconds","slon","elon",
+    x_cols = ["mo","dy","state_rank","mag","len","wid","area","seconds","slon","elon",
           "slat","elat","abs_dlon","abs_dlat","max_gust","min_gust","sd_gust",
           "mean_gust","median_gust"]
 
@@ -95,25 +102,30 @@ if __name__ == "__main__":
 
     X = df[x_cols]
     znorm = ZNormalizer()
-    X = znorm.fit_transform(X)
-    Y = df[target]
+    X = znorm.fit_transform(X).to_numpy(dtype="float32")
+    Y = df[target].to_numpy(dtype="float32")
 
     x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=0)
 
-    lrs = np.linspace(1e-5, 1e-3, 4)
-    nis = np.linspace(50000, 200000, 4)
+    lrs = np.linspace(1e-5, 1e-3, 3)
+    nis = np.linspace(50000, 200000, 3)
 
     run_cv = bool(int(input("Run cross-validation to find best params (1=Yes,0=No)? ")))
 
     if run_cv:
-        lr, ni = lin_reg_cv(X, Y, lrs, nis)
+        params, cv_r2, cv_rmse = lin_reg_cv(X, Y, lrs, nis)
+        lr, ni = params
         print(f"Best: lr = {lr}, n_iter = {ni}")
+        print(f"CV R^2 = {cv_r2: .4f}, CV RMSE = {cv_rmse: .4f}")
+        lm = LinearRegression(l_rate=lr, n_iter=int(ni))
+        lm.cv_r2 = cv_r2
+        lm.cv_rmse = cv_rmse
     else:
         lr, ni = (0.00034, 50000)
-    
+        lm = LinearRegression(l_rate=lr, n_iter=int(ni))
+
     # fit model
     print(f"Fitting best model for {target}")
-    lm = LinearRegression(l_rate=lr, n_iter=int(ni))
     lm.fit(x_train, y_train)
     lm.x_cols = x_cols
     lm.target = target
@@ -126,8 +138,6 @@ if __name__ == "__main__":
     y_pred = lm.predict(x_test)
     train_err = rmse(y_train, y_train_pred)
     train_r2 = r_squared(y_train, y_train_pred)
-    lm.train_r2 = train_r2
-    lm.train_rmse = train_err
     print(f"Model performance: train RMSE = {train_err}, train R^2 = {train_r2}")
 
     obs = np.arange(y_test.shape[0])

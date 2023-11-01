@@ -31,6 +31,55 @@ def r_squared(y_true, y_pred):
     return rsq
 
 """
+Converts the st (state) column to numeric type, by weighing
+    the average number of tornadoes by the magnitude per state.
+    This number is then used as the ranking.
+
+Args:
+    df (pd.DataFrame): dataframe with st, mag and yr cols
+
+Return
+    pd.DataFrame: same df with state_rank col
+"""
+def encode_states(df):
+    ranks = {}
+    for state, sdf in df.groupby(["st"]):
+        weight_sum = float(0)
+        tot_years = sdf["yr"].max() - sdf["yr"].min()
+        for ef in range(6):
+            n = sdf[sdf["mag"] == ef].shape[0]
+            weight_sum += (n * ef)
+        st_rank = weight_sum / tot_years
+        ranks[state] = st_rank
+        print(f"{state} rank = {st_rank}")
+    df["state_rank"] = df["st"].replace(ranks)
+    return df
+
+"""
+The loss column is a bit complicated. Before 1996, it is
+    a number [0,8] with 0 = < $50 and 8 = [$5e8,$5e9] going
+    up by an order of magnitude in between. After 1996 it
+    is millions of dollars. They also mention it may just
+    become whole dollars in the future. This function
+    attempts to decode that into something uniform.
+
+Args:
+    df (pd.DataFrame): dataframe with loss and yr cols
+
+Return
+    pd.DataFrame: same df with adjusted loss
+"""
+def encode_loss(df):
+    for _, row in df.iterrows():
+        if row["loss"] == float(0):
+            continue
+        elif row["yr"] <= 1996:
+            loss_code = row["loss"]+1
+            row["loss"] = 2.5 * (10 ** loss_code)
+    return df
+
+
+"""
 Class to transform data by performing
 z-score normalization. Also has the ability
 to inverse-transform
