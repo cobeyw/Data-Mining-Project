@@ -8,7 +8,6 @@ import pickle
 
 CSV_PATH = "data\\tornado_wind_data.csv"
 
-
 """
 Preprocesses csv into cleaned df by deleting
 mag == -9 rows, removing outliers, and filling

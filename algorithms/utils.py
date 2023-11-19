@@ -1,5 +1,6 @@
 import numpy as np
 from statistics import stdev
+import pickle
 
 """
 Function to calculate Root Mean Squared Error
@@ -53,6 +54,8 @@ def encode_states(df):
         ranks[state] = st_rank
         print(f"{state} rank = {st_rank}")
     df["state_rank"] = df["st"].replace(ranks)
+    with open("data\\state_ranks.pkl", "wb") as f:
+        pickle.dump(ranks, f)
     return df
 
 """
