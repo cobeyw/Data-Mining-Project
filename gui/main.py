@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import ttk
 import pickle
+import pandas as pd
 
 CSV_PATH = "data\\tornado_wind_data.csv"
 WIND_CSV_PATH = "data\\wind.csv"
@@ -35,7 +36,34 @@ Returns:
         for gusts in state on month/day
 """
 def get_wind_data(state, month, day):
-    return {}
+    # get wind data and match to parameters
+    wind = pd.read_csv(WIND_CSV_PATH)
+    data = wind[wind["st"] == state & wind["mo"] == month & wind["dy"] == day]
+    # if we have data matching these parameters
+    if data.shape[0] > 0:
+        mu = data["mag"].mean()
+        sd = data["mag"].std()
+        mx = data["mag"].max()
+        mn = data["mag"].min()
+        md = data["mag"].median()
+        return {"min": mn, "max": mx, "mean": mu, 
+                "median": md, "stdev": sd}
+    # if we do not have data matching
+    else:
+        data = wind[wind["st"] == state]
+        # if we have any data for the state
+        if data.shape[0] > 0:
+            mu = data["mag"].mean()
+            sd = data["mag"].std()
+            mx = data["mag"].max()
+            mn = data["mag"].min()
+            md = data["mag"].median()
+            return {"min": mn, "max": mx, "mean": mu, 
+                    "median": md, "stdev": sd}
+        # if we have no data for the state
+        else:
+            return {"min": 0, "max": 0, "mean": 0, 
+                    "median": 0, "stdev": 0}
 
 # sets up casualty prediction tab
 def _setup_casualty_tab(cas_tab):
