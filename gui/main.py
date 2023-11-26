@@ -4,9 +4,50 @@ from tkinter import ttk
 import pickle
 import pandas as pd
 
+# CONSTANTS
 CSV_PATH = "data\\tornado_wind_data.csv"
 WIND_CSV_PATH = "data\\wind.csv"
-DATA_LOADED = False
+DATA_LOADED_REGRESSION = False
+RANKS_PATH = "data\\state_ranks.pkl"
+INJ_MODEL_PATH = "models\\lr_0-000505_ni_200000_r_0-0_inj_model.pkl"
+INJ_ERR_MODEL_PATH = "models\\lr_1e-05_ni_50000_r_inj_abserr_model.pkl"
+FAT_MODEL_PATH = "models\\lr_0-001_ni_200000_r_0-1_fat_model.pkl"
+FAT_ERR_MODEL_PATH = "models\\lr_1e-05_ni_200000_r_fat_abserr_model.pkl"
+LOSS_MODEL_PATH = "models\\lr_0-000505_ni_50000_r_0-0_loss_model.pkl"
+LOSS_ERR_MODEL_PATH = "models\\lr_0-00034_ni_150000_r_loss_abserr_model.pkl"
+CLOSS_MODEL_PATH = "models\\lr_1e-05_ni_200000_r_0-0_closs_model.pkl"
+CLOSS_ERR_MODEL_PATH = "models\\lr_0-00067_ni_200000_r_closs_abserr_model.pkl"
+INJ_NORM_PATH = "models\\inj_norm.pkl"
+FAT_NORM_PATH = "models\\fat_norm.pkl"
+LOSS_NORM_PATH = "models\\loss_norm.pkl"
+CLOSS_NORM_PATH = "models\\closs_norm.pkl"
+with open(RANKS_PATH, "rb") as f:
+    RANKS = pickle.load(f)
+with open(INJ_MODEL_PATH, "rb") as f:
+    INJ_MODEL = pickle.load(f)
+with open(FAT_MODEL_PATH,"rb") as f:
+    FAT_MODEL = pickle.load(f)
+with open(LOSS_MODEL_PATH, "rb") as f:
+    LOSS_MODEL = pickle.load(f)
+with open(CLOSS_MODEL_PATH, "rb") as f:
+    CLOSS_MODEL = pickle.load(f)
+with open(INJ_NORM_PATH, "rb") as f:
+    INJ_NORM = pickle.load(f)
+with open(FAT_NORM_PATH, "rb") as f:
+    FAT_NORM = pickle.load(f)
+with open(LOSS_NORM_PATH, "rb") as f:
+    LOSS_NORM = pickle.load(f)
+with open(CLOSS_NORM_PATH, "rb") as f:
+    CLOSS_NORM = pickle.load(f)
+with open(INJ_ERR_MODEL_PATH, "rb") as f:
+    INJ_ERR_MODEL = pickle.load(f)
+with open(FAT_ERR_MODEL_PATH, "rb") as f:
+    FAT_ERR_MODEL = pickle.load(f)
+with open(LOSS_ERR_MODEL_PATH, "rb") as f:
+    LOSS_ERR_MODEL = pickle.load(f)
+with open(CLOSS_ERR_MODEL_PATH, "rb") as f:
+    CLOSS_ERR_MODEL = pickle.load(f)
+
 
 # prediction button response
 def _run_prediction():
@@ -18,7 +59,7 @@ def _load_csv():
 
 # clear csv button response
 def _clear_csv_data():
-    DATA_LOADED = False
+    DATA_LOADED_REGRESSION = False
     _ = messagebox.showinfo("Clear CSV", "Cleared!")
 
 """
@@ -118,10 +159,6 @@ def _setup_casualty_tab(cas_tab):
         output_labels[s] = o
 
 if __name__ == "__main__":
-    # DATA
-    with open("data\\state_ranks.pkl", "rb") as f:
-        ranks = pickle.load(f)
-
     # WINDOW SETUP
     window = tk.Tk()
     window.geometry("800x400")
