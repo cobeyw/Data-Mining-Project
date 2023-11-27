@@ -45,14 +45,14 @@ Return
 def encode_states(df):
     ranks = {}
     for state, sdf in df.groupby(["st"]):
+        state = state[0]
         weight_sum = float(0)
-        tot_years = sdf["yr"].max() - sdf["yr"].min()
+        tot_years = sdf["yr"].max() - sdf["yr"].min() + 1
         for ef in range(6):
             n = sdf[sdf["mag"] == ef].shape[0]
             weight_sum += (n * ef)
         st_rank = weight_sum / tot_years
         ranks[state] = st_rank
-        print(f"{state} rank = {st_rank}")
     df["state_rank"] = df["st"].replace(ranks)
     with open("data\\state_ranks.pkl", "wb") as f:
         pickle.dump(ranks, f)
@@ -64,13 +64,14 @@ The loss column is a bit complicated. Before 1996, it is
     up by an order of magnitude in between. After 1996 it
     is millions of dollars. They also mention it may just
     become whole dollars in the future. This function
-    attempts to decode that into something uniform.
+    attempts to decode that into something uniform. For
+    crop loss, it is simply in millions of dollars.
 
 Args:
-    df (pd.DataFrame): dataframe with loss and yr cols
+    df (pd.DataFrame): dataframe with loss, closs and yr cols
 
 Return
-    pd.DataFrame: same df with adjusted loss
+    pd.DataFrame: same df with adjusted loss/closs
 """
 def encode_loss(df):
     for _, row in df.iterrows():
@@ -79,6 +80,9 @@ def encode_loss(df):
         elif row["yr"] <= 1996:
             loss_code = row["loss"]+1
             row["loss"] = 2.5 * (10 ** loss_code)
+        elif row["yr"] > 1996:
+            row["loss"] = row["loss"] * 1e6
+    df["closs"] = df["closs"] * 1e6
     return df
 
 

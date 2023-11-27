@@ -29,6 +29,10 @@ def process_csv(csv_path, target, outlier_cutoff):
     na_cols = ["max_gust","min_gust","mean_gust","sd_gust","median_gust"]
     df = df[df.mag != -9]
     df[na_cols] = df[na_cols].fillna(0)
+    print("Encoding states")
+    df = encode_states(df)
+    print("Encoding loss")
+    df = encode_loss(df)
     nrow_before = df.shape[0]
     if outlier_cutoff is not None:
         df = df[df[target] <= outlier_cutoff]
@@ -36,10 +40,6 @@ def process_csv(csv_path, target, outlier_cutoff):
     row_rem = nrow_before - nrow_after
     rem_pct = 100.0 * (row_rem / nrow_before)
     print(f"Removed {row_rem} rows with outliers, {rem_pct:.2f}% of original data.")
-    print("Encoding states")
-    df = encode_states(df)
-    print("Encoding loss")
-    df = encode_loss(df)
     return df
 
 """
@@ -77,9 +77,9 @@ def fix_target_spread(df, target, ratio):
     tg_zero_pct = 100.0*(tg_zero/nrow)
     print(f"{nrow} rows after")
     print(f"{tg_zero} zero-valued rows, {tg_zero_pct}% of data")
-    if df[target].max() >= 10000:
-        print(f"Taking log10({target}+1)")
-        df[target] = np.log10(df[target]+1)
+    #if df[target].max() >= 10000:
+    #    print(f"Taking log10({target}+1)")
+    #    df[target] = np.log10(df[target]+1)
     return df
 
 if __name__ == "__main__":
@@ -88,7 +88,7 @@ if __name__ == "__main__":
           "mean_gust","median_gust"]
 
     target = input("Choose target col: ") #
-    outlier_cutoff = int(input("Choose outlier max cutoff (-1 for None): ")) #inj = 175, loss = 2e7
+    outlier_cutoff = float(input("Choose outlier max cutoff (-1 for None): ")) #inj = 175, loss = 2e7
     outlier_cutoff = None if outlier_cutoff < 0 else outlier_cutoff
 
     df = process_csv(CSV_PATH, target, outlier_cutoff)
@@ -96,12 +96,25 @@ if __name__ == "__main__":
     # looking at the spread of target so we can shape the training data
     # to have about an equal number of tornados with and without target 
     # values = 0
-    ratio = float(input("Choose zero/nonzero target values ratio: "))
-    df = fix_target_spread(df, target, ratio)
+    ratio = float(input("Choose zero/nonzero target values ratio (-1 to keep intact): "))
+    if ratio != -1:
+        df = fix_target_spread(df, target, ratio)
 
     X = df[x_cols]
-    znorm = ZNormalizer()
-    X = znorm.fit_transform(X).to_numpy(dtype="float32")
+    plt.title(target)
+    plt.hist(df[target])
+    plt.show()
+
+    try:
+        f = open("models\\data_norm.pkl", "rb")
+        znorm = pickle.load(f)
+        X = znorm.transform(X).to_numpy(dtype="float32")
+    except FileNotFoundError:
+        f.close()
+        znorm = ZNormalizer()
+        X = znorm.fit_transform(X).to_numpy(dtype="float32")
+        with open("models\\data_norm.pkl", "wb") as f:
+            pickle.dump(znorm, f)
     Y = df[target].to_numpy(dtype="float32")
 
     x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=0)
@@ -120,7 +133,7 @@ if __name__ == "__main__":
         lm.cv_r2 = cv_r2
         lm.cv_rmse = cv_rmse
     else:
-        lr, ni = (0.00034, 50000)
+        lr, ni = (0.001, 125000)
         lm = LinearRegression(l_rate=lr, n_iter=int(ni))
 
     # fit model
@@ -145,18 +158,15 @@ if __name__ == "__main__":
     plt.scatter(obs, sorted(y_test), color="blue", label="Ground Truth")
     plt.plot(obs, sorted(y_pred), color="red", label="predicted")
     plt.ylabel(target)
-    #plt.xlim((0,100))
+    #plt.xlim((0,200))
     plt.legend()
     plt.show()
 
-    save_model = bool(int(input("Save model/normalizer (1=Yes, 0=No)? ")))
+    save_model = bool(int(input("Save model (1=Yes, 0=No)? ")))
     if save_model:
         lr_str = str(lr).replace(".", "-")
         r_str = str(ratio).replace(".","-")
         name = f"lr_{lr_str}_ni_{int(ni)}_r_{r_str}"
         model_file = "models\\" + name + f"_{target}_model.pkl"
-        norm_file = "models\\" + name + f"_{target}_norm.pkl"
         with open(model_file, "wb") as f:
             pickle.dump(lm, f)
-        with open(norm_file, "wb") as f:
-            pickle.dump(znorm, f)
