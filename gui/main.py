@@ -19,7 +19,7 @@ INJ_MODEL_PATH = "models\\lr_0-000505_ni_200000_r_0-0_inj_model.pkl"
 INJ_ERR_MODEL_PATH = "models\\lr_1e-05_ni_50000_r_inj_abserr_model.pkl"
 FAT_MODEL_PATH = "models\\lr_0-001_ni_200000_r_0-1_fat_model.pkl"
 FAT_ERR_MODEL_PATH = "models\\lr_1e-05_ni_200000_r_fat_abserr_model.pkl"
-LOSS_MODEL_PATH = "models\\lr_0-001_ni_125000_r_0-0_loss_model.pkl"
+LOSS_MODEL_PATH = "models\\lr_0-001_ni_50000_r_0-0_loss_model.pkl"
 #LOSS_ERR_MODEL_PATH = "models\\lr_0-00034_ni_150000_r_loss_abserr_model.pkl"
 CLOSS_MODEL_PATH = "models\\lr_0-001_ni_50000_r_0-0_closs_model.pkl"
 #CLOSS_ERR_MODEL_PATH = "models\\lr_0-00067_ni_200000_r_closs_abserr_model.pkl"
@@ -102,12 +102,15 @@ def _run_prediction_reg(user_inputs: dict, outputs: dict):
         closs_pred = CLOSS_MODEL.predict(x_norm)[0]
         if closs_pred < float(0):
             closs_pred = 0.0
-        x_inj_err = np.array([mag, inj_pred]).reshape((1,2))
+        #x_inj_err = np.array([mag, inj_pred]).reshape((1,2))
         x_fat_err = np.array([mag, fat_pred]).reshape((1,2))
         #x_loss_err = np.array([mag, loss_pred]).reshape((1,2))
         #x_closs_err = np.array([mag, closs_pred]).reshape((1,2))
-        inj_err = INJ_ERR_MODEL.predict(x_inj_err)[0]
+        #inj_err = INJ_ERR_MODEL.predict(x_inj_err)[0]
         fat_err = FAT_ERR_MODEL.predict(x_fat_err)[0]
+        fat_pred = int(fat_pred - fat_err)
+        if fat_pred < 0:
+            fat_pred = 0
         #loss_err = LOSS_ERR_MODEL.predict(x_loss_err)[0]
         #closs_err = CLOSS_ERR_MODEL.predict(x_closs_err)[0]
         # adjust loss and crop loss as they are output on a log scale
@@ -115,8 +118,8 @@ def _run_prediction_reg(user_inputs: dict, outputs: dict):
         #closs_pred = 10**closs_pred
         #loss_err = 10**loss_err
         #closs_err = 10**closs_err
-        inj_text = f"{int(inj_pred)} +/- {inj_err:.2f}"
-        fat_text = f"{int(fat_pred)} +/- {fat_err:.2f}"
+        inj_text = f"{int(inj_pred)}"
+        fat_text = f"{int(fat_pred)}"
         loss_text = f"${loss_pred:.2f}"
         closs_text = f"${closs_pred:.2f}"
         outputs["Injuries"].config(text=inj_text)
