@@ -55,12 +55,12 @@ def _run_prediction_reg(user_inputs: dict, outputs: dict):
     else:
         state = user_inputs["State"].get()
         try:
-            month = int(user_inputs["Month"].get("1.0","end-1c"))
-            day = int(user_inputs["Day"].get("1.0","end-1c"))
-            mag = float(user_inputs["Magnitude"].get("1.0","end-1c"))
-            tlen = float(user_inputs["Track Legnth (mi)"].get("1.0","end-1c"))
-            wid = float(user_inputs["Storm Width (yd)"].get("1.0","end-1c"))
-        except ValueError as val_err:
+            month = int(user_inputs["Month"].get())
+            day = int(user_inputs["Day"].get())
+            mag = float(user_inputs["Magnitude"].get())
+            tlen = float(user_inputs["Track Length (mi)"].get())
+            wid = float(user_inputs["Storm Width (yd)"].get())
+        except ValueError:
             _ = messagebox.showinfo("Value Error", 
                                     "Invalid input for prediction")
             return
@@ -181,7 +181,10 @@ def get_wind_data_df(df):
 def _setup_casualty_tab(cas_tab):
     # user input variables, used in loop to make widget creation cleaner
     cas_user_inputs = ["Month", "Day", "State", "Magnitude",
-                       "Track Legnth (mi)", "Storm Width (yd)"]
+                       "Track Length (mi)", "Storm Width (yd)"]
+    input_lims = {"Month": [1,12,1], "Day": [1,31,1], "Magnitude": [0,5,0.5],
+                  "Track Length (mi)": [0.0,1000.0,0.01],
+                  "Storm Width (yd)": [0.0,10000.0,0.01]}
     tools_tips = ["Number of month, i.e. January = 1",
                   "Day of month", "State abbreviation",
                   "EF-Scale magnitude", "Length of storm track in miles",
@@ -212,7 +215,9 @@ def _setup_casualty_tab(cas_tab):
             d.place(relx=(xpos+wid), rely=ypos, relwidth=wid, relheight=0.05)
             user_inputs[s] = d
         else:
-            t = tk.Text(cas_tab)
+            lim = input_lims[s]
+            t = tk.Spinbox(cas_tab, from_=lim[0], to=lim[1],
+                           increment=lim[2])
             t.place(relx=(xpos+wid), rely=ypos, relwidth=wid, relheight=0.05)
             user_inputs[s] = t
 
