@@ -160,4 +160,3 @@ class ZNormalizer:
             else:
                 X.loc[:,col] = (col_vals * std) + mean
         return X
-            
