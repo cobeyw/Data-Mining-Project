@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import ttk
 from tkinter import simpledialog
+from idlelib.tooltip import Hovertip
 import pickle
 import pandas as pd
 import numpy as np
@@ -34,9 +35,6 @@ x_in = None
 # prediction button response
 def _run_prediction_reg(user_inputs: dict, outputs: dict):
     global x_in
-    # in_cols = ["mo","dy","state_rank","mag","len","wid","area","seconds","slon","elon",
-    #       "slat","elat","abs_dlon","abs_dlat","max_gust","min_gust","sd_gust",
-    #       "mean_gust","median_gust"]
     in_cols = ["state_rank","mag","len","wid","area","mean_gust","max_gust"]
     # if we have a csv loaded
     if DATA_LOADED_REGRESSION:
@@ -182,9 +180,12 @@ def get_wind_data_df(df):
 # sets up casualty prediction tab
 def _setup_casualty_tab(cas_tab):
     # user input variables, used in loop to make widget creation cleaner
-    cas_user_inputs = ["Month", "Day", "Mil Time (i.e. 0900)", "State", "Magnitude",
+    cas_user_inputs = ["Month", "Day", "State", "Magnitude",
                        "Track Legnth (mi)", "Storm Width (yd)"]
-    
+    tools_tips = ["Number of month, i.e. January = 1",
+                  "Day of month", "State abbreviation",
+                  "EF-Scale magnitude", "Length of storm track in miles",
+                  "Width of storm in yards"]
     # relative y step increase for each label (label spacing)
     lstep = 1.0 / (len(cas_user_inputs)+1)
     # widget width
@@ -202,6 +203,7 @@ def _setup_casualty_tab(cas_tab):
         l = tk.Label(cas_tab, text=s, bg="gray60")
         ypos = (i+1) * lstep
         l.place(relx=xpos, rely=ypos, ancho="nw", relwidth=wid, relheight=0.05)
+        _ = Hovertip(l, tools_tips[i], hover_delay=500)
         if s == "State":
             st = tk.StringVar()
             st.set("")
@@ -215,13 +217,15 @@ def _setup_casualty_tab(cas_tab):
             user_inputs[s] = t
 
     # prediction outputs, similar setup to user inputs but on the other side
-    outputs = ["Casualties","Damages"]
+    outputs = ["Casualties", "Damages"]
+    tools_tips = ["All injuries to persons, including fatal", "Damage to crops and property, in USD"]
     output_labels = {}
     new_xpos = 0.5+xpos
     preds = tk.Label(cas_tab, text="Predictions", bg="LightGoldenrod1")
     preds.place(relx=(new_xpos+(wid/2)), rely=0.01, anchor="nw", relwidth=wid)
     for i, s in enumerate(outputs):
         l = tk.Label(cas_tab, text=s, bg="LightGoldenrod1")
+        _ = Hovertip(l, tools_tips[i], hover_delay=500)
         ypos = (i+1) * lstep
         l.place(relx=new_xpos, rely=ypos, ancho="nw", relwidth=wid, relheight=0.05)
         o = tk.Label(cas_tab, text="", bg="white")
