@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox
 from tkinter import ttk
+from tkinter import simpledialog
 import pickle
 import pandas as pd
 import numpy as np
@@ -15,55 +16,43 @@ WIND_CSV_PATH = "data\\wind.csv"
 WIND = None
 DATA_LOADED_REGRESSION = False
 RANKS_PATH = "data\\state_ranks.pkl"
-INJ_MODEL_PATH = "models\\lr_0-000505_ni_200000_r_0-0_inj_model.pkl"
-INJ_ERR_MODEL_PATH = "models\\lr_1e-05_ni_50000_r_inj_abserr_model.pkl"
-FAT_MODEL_PATH = "models\\lr_0-001_ni_200000_r_0-1_fat_model.pkl"
-FAT_ERR_MODEL_PATH = "models\\lr_1e-05_ni_200000_r_fat_abserr_model.pkl"
-LOSS_MODEL_PATH = "models\\lr_0-001_ni_50000_r_0-0_loss_model.pkl"
-#LOSS_ERR_MODEL_PATH = "models\\lr_0-00034_ni_150000_r_loss_abserr_model.pkl"
-CLOSS_MODEL_PATH = "models\\lr_0-001_ni_50000_r_0-0_closs_model.pkl"
-#CLOSS_ERR_MODEL_PATH = "models\\lr_0-00067_ni_200000_r_closs_abserr_model.pkl"
+CAS_MODEL_PATH = "models\\lr_0-005005_ni_200000_r_1-0_cas_model.pkl"
+DMG_MODEL_PATH = "models\\lr_0-01_ni_200000_r_0-5_dmg_model.pkl"
 NORM_PATH = "models\\data_norm.pkl"
 with open(RANKS_PATH, "rb") as f:
     RANKS = pickle.load(f)
-with open(INJ_MODEL_PATH, "rb") as f:
-    INJ_MODEL = pickle.load(f)
-with open(FAT_MODEL_PATH,"rb") as f:
-    FAT_MODEL = pickle.load(f)
-with open(LOSS_MODEL_PATH, "rb") as f:
-    LOSS_MODEL = pickle.load(f)
-with open(CLOSS_MODEL_PATH, "rb") as f:
-    CLOSS_MODEL = pickle.load(f)
 with open(NORM_PATH, "rb") as f:
     DATA_NORM = pickle.load(f)
-with open(INJ_ERR_MODEL_PATH, "rb") as f:
-    INJ_ERR_MODEL = pickle.load(f)
-with open(FAT_ERR_MODEL_PATH, "rb") as f:
-    FAT_ERR_MODEL = pickle.load(f)
-#with open(LOSS_ERR_MODEL_PATH, "rb") as f:
-#    LOSS_ERR_MODEL = pickle.load(f)
-#with open(CLOSS_ERR_MODEL_PATH, "rb") as f:
-#    CLOSS_ERR_MODEL = pickle.load(f)
+with open(CAS_MODEL_PATH, "rb") as f:
+    CAS_MODEL = pickle.load(f)
+with open(DMG_MODEL_PATH, "rb") as f:
+    DMG_MODEL = pickle.load(f)
 
 # GLOBALS
-inj_pred = None
-inj_err = None
-fat_pred = None
-far_err = None
-loss_pred = None
-loss_err = None
-closs_pred = None
-closs_err = None
+x_in = None
 
 # prediction button response
 def _run_prediction_reg(user_inputs: dict, outputs: dict):
-    in_cols = ["mo","dy","state_rank","mag","len","wid","area","seconds","slon","elon",
-          "slat","elat","abs_dlon","abs_dlat","max_gust","min_gust","sd_gust",
-          "mean_gust","median_gust"]
+    global x_in
+    # in_cols = ["mo","dy","state_rank","mag","len","wid","area","seconds","slon","elon",
+    #       "slat","elat","abs_dlon","abs_dlat","max_gust","min_gust","sd_gust",
+    #       "mean_gust","median_gust"]
+    in_cols = ["state_rank","mag","len","wid","area","mean_gust","max_gust"]
     # if we have a csv loaded
     if DATA_LOADED_REGRESSION:
-        _ = messagebox.showinfo("CSV", "Predicting...")
-        return
+        x_in_og = x_in.copy()
+        x_in["area"] = (MI_TO_YD*x_in["len"]) * x_in["wid"]
+        x_in = get_wind_data_df(x_in)
+        x_in = x_in.replace({"st": RANKS})
+        x_in = x_in.rename(columns={"st": "state_rank"})
+        x_in = x_in[in_cols]
+        print(x_in)
+        x_norm = DATA_NORM.transform(x_in).to_numpy()
+        cas_pred = CAS_MODEL.predict(x_norm)
+        dmg_pred = DMG_MODEL.predict(x_norm)
+        x_in_og["cas"] = cas_pred
+        x_in_og["dmg"] = dmg_pred
+        x_in_og.to_csv("predictions.csv")
     # no csv loaded
     else:
         state = user_inputs["State"].get()
@@ -73,70 +62,46 @@ def _run_prediction_reg(user_inputs: dict, outputs: dict):
             mag = float(user_inputs["Magnitude"].get("1.0","end-1c"))
             tlen = float(user_inputs["Track Legnth (mi)"].get("1.0","end-1c"))
             wid = float(user_inputs["Storm Width (yd)"].get("1.0","end-1c"))
-            hours = float(user_inputs["Mil Time (i.e. 0900)"].get("1.0","end-1c"))
-            slon = float(user_inputs["Start Longitude"].get("1.0","end-1c"))
-            elon = float(user_inputs["End Longitude"].get("1.0","end-1c"))
-            slat = float(user_inputs["Start Latitude"].get("1.0","end-1c"))
-            elat = float(user_inputs["End Latitude"].get("1.0","end-1c"))
         except ValueError as val_err:
-            _ = messagebox.showinfo("Value Error", str(val_err))
+            _ = messagebox.showinfo("Value Error", 
+                                    "Invalid input for prediction")
             return
         
         area = (MI_TO_YD*tlen) * wid
         state_rank = RANKS[state]
-        secs = hours * HR_TO_SEC
-        abs_dlon = abs(slon - elon)
-        abs_dlat = abs(slat - elat)
         gust = get_wind_data(state, month, day)
-        x = [month, day, state_rank, mag, tlen, wid, area, secs, slon,
-                        elon, slat, elat, abs_dlon, abs_dlat, gust["max"], gust["min"],
-                        gust["stdev"], gust["mean"], gust["median"]]
+        x = [state_rank,mag,tlen,wid,area,gust["mean"],gust["max"]]
         xdf = pd.DataFrame(columns=in_cols)
         xdf.loc[0] = x
         x_norm = DATA_NORM.transform(xdf).to_numpy()
-        inj_pred = INJ_MODEL.predict(x_norm)[0]
-        fat_pred = FAT_MODEL.predict(x_norm)[0]
-        loss_pred = LOSS_MODEL.predict(x_norm)[0]
-        if loss_pred < float(0):
-            loss_pred = 0.0
-        closs_pred = CLOSS_MODEL.predict(x_norm)[0]
-        if closs_pred < float(0):
-            closs_pred = 0.0
-        #x_inj_err = np.array([mag, inj_pred]).reshape((1,2))
-        x_fat_err = np.array([mag, fat_pred]).reshape((1,2))
-        #x_loss_err = np.array([mag, loss_pred]).reshape((1,2))
-        #x_closs_err = np.array([mag, closs_pred]).reshape((1,2))
-        #inj_err = INJ_ERR_MODEL.predict(x_inj_err)[0]
-        fat_err = FAT_ERR_MODEL.predict(x_fat_err)[0]
-        fat_pred = int(fat_pred - fat_err)
-        if fat_pred < 0:
-            fat_pred = 0
-        #loss_err = LOSS_ERR_MODEL.predict(x_loss_err)[0]
-        #closs_err = CLOSS_ERR_MODEL.predict(x_closs_err)[0]
-        # adjust loss and crop loss as they are output on a log scale
-        #loss_pred = 10**loss_pred
-        #closs_pred = 10**closs_pred
-        #loss_err = 10**loss_err
-        #closs_err = 10**closs_err
-        inj_text = f"{int(inj_pred)}"
-        fat_text = f"{int(fat_pred)}"
-        loss_text = f"${loss_pred:.2f}"
-        closs_text = f"${closs_pred:.2f}"
-        outputs["Injuries"].config(text=inj_text)
-        outputs["Fatalities"].config(text=fat_text)
-        outputs["Property Loss"].config(text=loss_text)
-        outputs["Crop Loss"].config(text=closs_text)
+        cas_pred = CAS_MODEL.predict(x_norm)[0]
+        dmg_pred = DMG_MODEL.predict(x_norm)[0]
+        cas_pred = cas_pred if cas_pred > float(0) else 0
+        dmg_pred = dmg_pred if dmg_pred > float(0) else 0.0
+        cas_text = f"{int(cas_pred)}"
+        dmg_text = f"${(dmg_pred):.2f}"
+        outputs["Casualties"].config(text=cas_text)
+        outputs["Damages"].config(text=dmg_text)
         
 # load csv button response
 def _load_csv_reg(pred_button):
-    global DATA_LOADED_REGRESSION
+    global DATA_LOADED_REGRESSION, x_in
+    csv_path = simpledialog.askstring(title="",
+                                  prompt="Enter CSV file path: ")
+    try:
+        x_in = pd.read_csv(csv_path)
+    except FileNotFoundError:
+        _ = messagebox.showinfo("Error", 
+                                f"File {csv_path} not found")
+        return
     DATA_LOADED_REGRESSION = True
     pred_button.config(text="Predict CSV")
 
 # clear csv button response
 def _clear_csv_data_reg(pred_button):
-    global DATA_LOADED_REGRESSION
+    global DATA_LOADED_REGRESSION, x_in
     DATA_LOADED_REGRESSION = False
+    x_in  = None
     pred_button.config(text="Predict")
 
 """
@@ -185,12 +150,40 @@ def get_wind_data(state, month, day):
             return {"min": 0, "max": 0, "mean": 0, 
                     "median": 0, "stdev": 0}
 
+"""
+Fills in wind data for the entire dataframe
+
+Args:
+    df (pd.DataFrame): dataframe with st, dy, mo cols
+
+Return
+    pd.DataFrame: df with wind data
+"""
+def get_wind_data_df(df):
+    mingust = []
+    maxgust = []
+    meangust = []
+    mediangust = []
+    stdevgust = []
+    for _, row in df.iterrows():
+        gust = get_wind_data(row["st"], row["mo"], row["dy"])
+        mingust.append(gust["min"])
+        maxgust.append(gust["max"])
+        meangust.append(gust["mean"])
+        mediangust.append(gust["median"])
+        stdevgust.append(gust["stdev"])
+    df["min_gust"] = mingust
+    df["max_gust"] = maxgust
+    df["mean_gust"] = meangust
+    df["median_gust"] = mediangust
+    df["std_gust"] = stdevgust
+    return df
+
 # sets up casualty prediction tab
 def _setup_casualty_tab(cas_tab):
     # user input variables, used in loop to make widget creation cleaner
     cas_user_inputs = ["Month", "Day", "Mil Time (i.e. 0900)", "State", "Magnitude",
-                       "Track Legnth (mi)", "Storm Width (yd)", "Start Latitude", 
-                       "Start Longitude", "End Latitude", "End Longitude"]
+                       "Track Legnth (mi)", "Storm Width (yd)"]
     
     # relative y step increase for each label (label spacing)
     lstep = 1.0 / (len(cas_user_inputs)+1)
@@ -222,7 +215,7 @@ def _setup_casualty_tab(cas_tab):
             user_inputs[s] = t
 
     # prediction outputs, similar setup to user inputs but on the other side
-    outputs = ["Injuries","Fatalities","Property Loss","Crop Loss"]
+    outputs = ["Casualties","Damages"]
     output_labels = {}
     new_xpos = 0.5+xpos
     preds = tk.Label(cas_tab, text="Predictions", bg="LightGoldenrod1")

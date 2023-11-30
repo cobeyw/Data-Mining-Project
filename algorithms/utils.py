@@ -1,6 +1,10 @@
 import numpy as np
 from statistics import stdev
 import pickle
+import pandas as pd
+
+CPI_PATH = "data\\cpi.csv"
+CPI = pd.read_csv(CPI_PATH)
 
 """
 Function to calculate Root Mean Squared Error
@@ -85,6 +89,24 @@ def encode_loss(df):
     df["closs"] = df["closs"] * 1e6
     return df
 
+"""
+Adjust dollar columns in df for inflation, based Consumer Price Index
+Args:
+    df (pd.DataFrame): dataframe with yr col and cols listed in dollar_cols
+    dollar_cols (List[str]): column names of columns that contain dollar amounts
+
+Return
+    pd.DataFrame: dataframe with adjusted dollars
+"""
+def adjust_dollars(df, dollar_cols):
+    curr_year = CPI["Year"].max()
+    curr_cpi = CPI[CPI["Year"] == curr_year]["CPI"].values[0]
+    for _, row in df.iterrows():
+        year_cpi =CPI[CPI["Year"] == row["yr"]]["CPI"].values[0]
+        for col in dollar_cols:
+            adjustment = float(curr_cpi)/year_cpi
+            row[col] = row[col] * adjustment
+    return df
 
 """
 Class to transform data by performing

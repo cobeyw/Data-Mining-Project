@@ -2,7 +2,7 @@ from linear_regression import LinearRegression, lin_reg_cv
 import pandas as pd
 from sklearn.model_selection import train_test_split
 import numpy as np
-from utils import rmse, r_squared, ZNormalizer, encode_states, encode_loss
+from utils import rmse, r_squared, ZNormalizer, encode_states, encode_loss, adjust_dollars
 from matplotlib import pyplot as plt
 import pickle
 
@@ -29,10 +29,15 @@ def process_csv(csv_path, target, outlier_cutoff):
     na_cols = ["max_gust","min_gust","mean_gust","sd_gust","median_gust"]
     df = df[df.mag != -9]
     df[na_cols] = df[na_cols].fillna(0)
+    print("Adding aggregate target columns")
+    df["cas"] = df["inj"] + df["fat"]
     print("Encoding states")
     df = encode_states(df)
     print("Encoding loss")
     df = encode_loss(df)
+    print("Adjusting for inflation")
+    df = adjust_dollars(df, ["loss","closs"])
+    df["dmg"] = df["loss"] + df["closs"]
     nrow_before = df.shape[0]
     if outlier_cutoff is not None:
         df = df[df[target] <= outlier_cutoff]
@@ -77,18 +82,13 @@ def fix_target_spread(df, target, ratio):
     tg_zero_pct = 100.0*(tg_zero/nrow)
     print(f"{nrow} rows after")
     print(f"{tg_zero} zero-valued rows, {tg_zero_pct}% of data")
-    #if df[target].max() >= 10000:
-    #    print(f"Taking log10({target}+1)")
-    #    df[target] = np.log10(df[target]+1)
     return df
 
 if __name__ == "__main__":
-    x_cols = ["mo","dy","state_rank","mag","len","wid","area","seconds","slon","elon",
-          "slat","elat","abs_dlon","abs_dlat","max_gust","min_gust","sd_gust",
-          "mean_gust","median_gust"]
+    x_cols = ["state_rank","mag","len","wid","area","mean_gust","max_gust"]
 
-    target = input("Choose target col: ") #
-    outlier_cutoff = float(input("Choose outlier max cutoff (-1 for None): ")) #inj = 175, loss = 2e7
+    target = input("Choose target col: ")
+    outlier_cutoff = float(input("Choose outlier max cutoff (-1 for None): ")) # dmg = 1e6, cas = -1
     outlier_cutoff = None if outlier_cutoff < 0 else outlier_cutoff
 
     df = process_csv(CSV_PATH, target, outlier_cutoff)
@@ -96,7 +96,7 @@ if __name__ == "__main__":
     # looking at the spread of target so we can shape the training data
     # to have about an equal number of tornados with and without target 
     # values = 0
-    ratio = float(input("Choose zero/nonzero target values ratio (-1 to keep intact): "))
+    ratio = float(input("Choose zero/nonzero target values ratio (-1 to keep intact): ")) # dmg = 1.0, cas = 1.0
     if ratio != -1:
         df = fix_target_spread(df, target, ratio)
 
@@ -119,12 +119,12 @@ if __name__ == "__main__":
 
     x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=0)
 
-    lrs = np.linspace(1e-5, 1e-3, 3)
-    nis = np.linspace(50000, 200000, 3)
-
     run_cv = bool(int(input("Run cross-validation to find best params (1=Yes,0=No)? ")))
 
     if run_cv:
+        n_params = int(input("How many params to try? "))
+        lrs = np.linspace(1e-5, 1e-2, n_params)
+        nis = np.linspace(50000, 200000, n_params)
         params, cv_r2, cv_rmse = lin_reg_cv(X, Y, lrs, nis)
         lr, ni = params
         print(f"Best: lr = {lr}, n_iter = {ni}")
@@ -133,7 +133,7 @@ if __name__ == "__main__":
         lm.cv_r2 = cv_r2
         lm.cv_rmse = cv_rmse
     else:
-        lr, ni = (0.001, 125000)
+        lr, ni = (1e-2, 200000)
         lm = LinearRegression(l_rate=lr, n_iter=int(ni))
 
     # fit model
@@ -143,6 +143,7 @@ if __name__ == "__main__":
     lm.target = target
     lm.outlier_cutoff = outlier_cutoff
     lm.target_ratio = ratio
+    print(lm.get_coeff())
 
     # predict
     print("Testing model")
@@ -153,10 +154,11 @@ if __name__ == "__main__":
     print(f"Model performance: train RMSE = {train_err}, train R^2 = {train_r2}")
 
     obs = np.arange(y_test.shape[0])
+    step = 2
     mets = f"RMSE = {rmse(y_test, y_pred):.4f}, R^2 = {r_squared(y_test, y_pred):.4f}"
     plt.title(mets)
-    plt.scatter(obs, sorted(y_test), color="blue", label="Ground Truth")
-    plt.plot(obs, sorted(y_pred), color="red", label="predicted")
+    plt.scatter(obs[::step], y_test[::step], color="blue", label="Ground Truth")
+    plt.plot(obs[::step], y_pred[::step], color="red", label="predicted")
     plt.ylabel(target)
     #plt.xlim((0,200))
     plt.legend()

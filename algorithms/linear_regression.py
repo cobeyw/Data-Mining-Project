@@ -9,7 +9,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression as LinReg
 from itertools import product
   
-# LinearRegression class
 class LinearRegression() : 
     def __init__(self, l_rate, n_iter): 
         self.l_rate = l_rate 
@@ -20,6 +19,8 @@ class LinearRegression() :
         self.target_ratio = None
         self.x_cols = None
         self.target = None
+        self.weights = None
+        self.bias = None
           
     """Adjusts weights to fit Y to some input data X.
         such that y_pred = sum(Wi * Xi) + b.
@@ -29,7 +30,7 @@ class LinearRegression() :
             Y (np.array): numpy array with true values of shape (n_observations,)
             bias (float): bias value for loss function, defaults to 0
     """         
-    def fit(self, X, Y, bias=0) : 
+    def fit(self, X, Y, bias=0): 
         # get the number of observations and features
         self.n_obs = X.shape[0]
         self.n_feat = 0
@@ -47,25 +48,24 @@ class LinearRegression() :
         self.Y = Y.astype(np.float32) 
         
         # run iterations updating the weights
-        for i in range(self.n_iter):
+        for _ in range(self.n_iter):
             self.__update_weights() 
 
     """Updates the weights based and bias based on
         gradients of the current weights. Meant for
         internal class use only.
     """ 
-    def __update_weights(self) : 
+    def __update_weights(self): 
         # get predictions for this iteration
         Y_pred = self.predict(self.X)
           
         # weights and bias gradients
-        d_weights = - (2 * (self.X.T).dot(self.Y - Y_pred)) / self.n_obs 
-        d_bias = - 2 * np.sum(self.Y - Y_pred) / self.n_obs 
-          
+        d_bias = -2.0 * np.sum(self.Y - Y_pred) / self.n_obs 
+        d_weights = -2.0 * (self.X.T).dot(self.Y - Y_pred) / self.n_obs 
+
         # update weights and bias
         self.weights = self.weights - (self.l_rate * d_weights)
         self.bias = self.bias - (self.l_rate * d_bias) 
-
       
     """Predicts the target value for a set of inputs X,
     based on y_pred = x*weights + bias.
@@ -78,11 +78,22 @@ class LinearRegression() :
         np.array: array of shape(m,) with predicted values,
             None if shape is incorrect. 
     """
-    def predict(self, X) : 
+    def predict(self, X): 
         if X.shape[1] != self.n_feat:
-            print(f"Expected array of shape (m, {self.n_feats}), got array of shape {X.shape}")
+            print(f"Expected array of shape (m, {self.n_feat}), got array of shape {X.shape}")
             return None
         return X.dot(self.weights) + self.bias
+    
+    """
+    Returns the coefficients for the model.
+    Returns
+        Dict[str, float]: coefficients as a dict
+    """ 
+    def get_coeff(self):
+        coeff = {}
+        for feat, w in zip(self.x_cols, self.weights):
+            coeff[feat] = w
+        return coeff
 
 """
 Performs k-folds cross-validation using linear regression and
