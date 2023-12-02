@@ -6,6 +6,7 @@ from utils import rmse, r_squared, ZNormalizer, encode_states, encode_loss, adju
 from matplotlib import pyplot as plt
 import pickle
 
+# main data csv path
 CSV_PATH = "data\\tornado_wind_data.csv"
 
 """
@@ -30,14 +31,15 @@ def process_csv(csv_path, target, outlier_cutoff):
     df = df[df.mag != -9]
     df[na_cols] = df[na_cols].fillna(0)
     print("Adding aggregate target columns")
-    df["cas"] = df["inj"] + df["fat"]
-    print("Encoding states")
-    df = encode_states(df)
+    df["cas"] = df["inj"] + df["fat"]           # casualty target column
+    print("Encoding states")                    
+    df = encode_states(df)                      # encoding state column such tha it becomes the state tornado rank
     print("Encoding loss")
-    df = encode_loss(df)
+    df = encode_loss(df)                        # encode loss column as per NOAA instructions (see function for details)
     print("Adjusting for inflation")
-    df = adjust_dollars(df, ["loss","closs"])
-    df["dmg"] = df["loss"] + df["closs"]
+    df = adjust_dollars(df, ["loss","closs"])   # adjust money for inflation so that it's all in current year dollars
+    df["dmg"] = df["loss"] + df["closs"]        # damages target column
+    # remove outliers based on user-provided outlier cutoff
     nrow_before = df.shape[0]
     if outlier_cutoff is not None:
         df = df[df[target] <= outlier_cutoff]
@@ -64,27 +66,32 @@ Returns:
       pd.DataFrame: dataframe with the corrected ratio
 """
 def fix_target_spread(df, target, ratio):
-    tg_zero = df[df[target] == 0].shape[0]
-    tg_nzero = df[df[target] != 0].shape[0]
-    nrow = df.shape[0]
-    tg_zero_pct = 100.0*(tg_zero/nrow)
-    tg_zero_ideal = int(tg_nzero*ratio)
-    n_del = tg_zero - tg_zero_ideal
+    tg_zero = df[df[target] == 0].shape[0]                          # number of rows with zero-valued target variable
+    tg_nzero = df[df[target] != 0].shape[0]                         # number of rows with non-zero target variable
+    nrow = df.shape[0]                                              # total rows in df
+    tg_zero_pct = 100.0*(tg_zero/nrow)                              # percent of zero-valued target
+    tg_zero_ideal = int(tg_nzero*ratio)                             # user-select percent of zero-valued target
+    n_del = tg_zero - tg_zero_ideal                                 # how many rows we need to delete to meet user specs
     print(f"{tg_zero} zero-valued rows, {tg_nzero} nonzero. {tg_zero_pct}% of data zero-valued")
     print(f"{nrow} rows before")
-    tg_zero_idx = df.index[df[target] == 0].tolist()
-    del_idx = tg_zero_idx[:n_del]
-    correct_len = len(del_idx) == n_del
+    tg_zero_idx = df.index[df[target] == 0].tolist()                # get the indexes of zero-valued targets
+    del_idx = tg_zero_idx[:n_del]                                   # decided which indexes to delete
+    correct_len = len(del_idx) == n_del                             # check if we have the correct amount for deletion
     print(f"Correct del length? {correct_len}")
-    df.drop(del_idx, inplace=True)
-    tg_zero = df[df[target] == 0].shape[0]
+    df.drop(del_idx, inplace=True)                                  # drop the calculated indexes
+    tg_zero = df[df[target] == 0].shape[0]                          # check new distribution of zero-valued targets
     nrow = df.shape[0]
-    tg_zero_pct = 100.0*(tg_zero/nrow)
+    tg_zero_pct = 100.0*(tg_zero/nrow)                              # new pct of zero-valued targets
     print(f"{nrow} rows after")
     print(f"{tg_zero} zero-valued rows, {tg_zero_pct}% of data")
     return df
 
 if __name__ == "__main__":
+    """
+    get the user inputs in order to use CV to train various
+    number of iterations and learning rates for the LinearRegression
+    model in order to find the best-performing combo.
+    """
     x_cols = ["state_rank","mag","len","wid","area","mean_gust","max_gust"]
 
     target = input("Choose target col: ")
@@ -110,7 +117,6 @@ if __name__ == "__main__":
         znorm = pickle.load(f)
         X = znorm.transform(X).to_numpy(dtype="float32")
     except FileNotFoundError:
-        f.close()
         znorm = ZNormalizer()
         X = znorm.fit_transform(X).to_numpy(dtype="float32")
         with open("models\\data_norm.pkl", "wb") as f:
@@ -153,6 +159,7 @@ if __name__ == "__main__":
     train_r2 = r_squared(y_train, y_train_pred)
     print(f"Model performance: train RMSE = {train_err}, train R^2 = {train_r2}")
 
+    # plot test performance
     obs = np.arange(y_test.shape[0])
     step = 2
     mets = f"RMSE = {rmse(y_test, y_pred):.4f}, R^2 = {r_squared(y_test, y_pred):.4f}"
@@ -160,10 +167,10 @@ if __name__ == "__main__":
     plt.scatter(obs[::step], y_test[::step], color="blue", label="Ground Truth")
     plt.plot(obs[::step], y_pred[::step], color="red", label="predicted")
     plt.ylabel(target)
-    #plt.xlim((0,200))
     plt.legend()
     plt.show()
 
+    # save the model if needed
     save_model = bool(int(input("Save model (1=Yes, 0=No)? ")))
     if save_model:
         lr_str = str(lr).replace(".", "-")

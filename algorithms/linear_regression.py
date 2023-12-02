@@ -111,33 +111,39 @@ Returns:
         combination, along with CV R^2 and RMSE
 """  
 def lin_reg_cv(X, Y, l_rates, n_iters, val_size=0.2, k=3):
-    params = list(product(l_rates, n_iters))
-    best_r2 = 1e-9
+    params = list(product(l_rates, n_iters))                                        # get the list of param combos              
+    best_r2 = 1e-9                                                                  # initialize best params
     best_params = None
     best_rmse = None
 
-    for lr, ni in params:
-        errs = float(0)
+    for lr, ni in params:                                                           # for each param combo
+        errs = float(0)                                                             # initialize metrics
         r2s = float(0)
-        for i in range(k):
-            x_train, x_val, y_train, y_val = train_test_split(X, Y, test_size=val_size)
+        for i in range(k):                                                          # for each fold
+            x_train, x_val, y_train, y_val = train_test_split(X, 
+                                                              Y, 
+                                                              test_size=val_size)   # get the training and validation sets
             print(f"Fold {i+1}, params: lr = {lr}, ni = {ni}")
-            lm = LinearRegression(l_rate=lr, n_iter=int(ni))
+            lm = LinearRegression(l_rate=lr, n_iter=int(ni))                        # create the model and fit
             lm.fit(x_train, y_train)
-            y_pred = lm.predict(x_val)
-            r2s += (r_squared(y_val, y_pred))
+            y_pred = lm.predict(x_val)                                              # predict on validation set
+            r2s += (r_squared(y_val, y_pred))                                       # accumulate metrics
             errs += (rmse(y_val, y_pred))
-        avg_rmse = errs / k
+        avg_rmse = errs / k                                                         # get average metrics
         avg_r2 = r2s / k
         print(f"Avg RMSE = {avg_rmse: .4f}, Avg R^2 = {avg_r2: .4f}")
-        if avg_r2 > best_r2:
+        if avg_r2 > best_r2:                                                        # decide if better than previous best
             best_params = (lr, ni)
             best_r2 = avg_r2
             best_rmse = avg_rmse
 
-    return best_params, best_r2, best_rmse 
+    return best_params, best_r2, best_rmse                                          # return best params
 
 if __name__ == "__main__":
+    """
+    Simple test to check our model performance against the built-in
+    sklearn LinearRegression model
+    """
     # create sample data
     n = 100
     m = 0.5
