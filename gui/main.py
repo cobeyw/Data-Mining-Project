@@ -17,13 +17,13 @@ WIND_CSV_PATH = "data\\wind.csv"
 WIND = None
 DATA_LOADED_REGRESSION = False
 RANKS_PATH = "data\\state_ranks.pkl"
-CAS_MODEL_PATH = "models\\lr_0-005005_ni_200000_r_1-0_cas_model.pkl"
-DMG_MODEL_PATH = "models\\lr_0-01_ni_200000_r_0-5_dmg_model.pkl"
-NORM_PATH = "models\\data_norm.pkl"
+CAS_MODEL_PATH = "models\\lr_0-01_ni_50000_r_1-0_cas_model.pkl"
+DMG_MODEL_PATH = "models\\lr_0-005005_ni_125000_r_0-5_dmg_model.pkl"
+REGR_NORM_PATH = "models\\regr_data_norm.pkl"
 with open(RANKS_PATH, "rb") as f:
     RANKS = pickle.load(f)
-with open(NORM_PATH, "rb") as f:
-    DATA_NORM = pickle.load(f)
+with open(REGR_NORM_PATH, "rb") as f:
+    REGR_DATA_NORM = pickle.load(f)
 with open(CAS_MODEL_PATH, "rb") as f:
     CAS_MODEL = pickle.load(f)
 with open(DMG_MODEL_PATH, "rb") as f:
@@ -35,17 +35,19 @@ x_in = None
 # prediction button response
 def _run_prediction_reg(user_inputs: dict, outputs: dict):
     global x_in
-    in_cols = ["state_rank","mag","len","wid","area","mean_gust","max_gust"]
+    in_cols = ["scale_vol", "area", "work_cap", "len", "mag", "wid"]
     # if we have a csv loaded
     if DATA_LOADED_REGRESSION:
         x_in_og = x_in.copy()
         x_in["area"] = (MI_TO_YD*x_in["len"]) * x_in["wid"]
+        x_in["work_cap"] = x_in["len"] * (x_in["mag"] + 1.0)
+        x_in["scale_vol"] = x_in["area"] * (x_in["mag"] + 1.0)
         x_in = get_wind_data_df(x_in)
         x_in = x_in.replace({"st": RANKS})
         x_in = x_in.rename(columns={"st": "state_rank"})
         x_in = x_in[in_cols]
         print(x_in)
-        x_norm = DATA_NORM.transform(x_in).to_numpy()
+        x_norm = REGR_DATA_NORM.transform(x_in).to_numpy()
         cas_pred = CAS_MODEL.predict(x_norm)
         dmg_pred = DMG_MODEL.predict(x_norm)
         x_in_og["cas"] = cas_pred
@@ -53,11 +55,8 @@ def _run_prediction_reg(user_inputs: dict, outputs: dict):
         x_in_og.to_csv("predictions.csv")
     # no csv loaded
     else:
-        state = user_inputs["State"].get()
         try:
-            month = int(user_inputs["Month"].get())
-            day = int(user_inputs["Day"].get())
-            mag = float(user_inputs["Magnitude"].get())
+            mag = float(user_inputs["EF Magnitude"].get())
             tlen = float(user_inputs["Track Length (mi)"].get())
             wid = float(user_inputs["Storm Width (yd)"].get())
         except ValueError:
@@ -66,12 +65,12 @@ def _run_prediction_reg(user_inputs: dict, outputs: dict):
             return
         
         area = (MI_TO_YD*tlen) * wid
-        state_rank = RANKS[state]
-        gust = get_wind_data(state, month, day)
-        x = [state_rank,mag,tlen,wid,area,gust["mean"],gust["max"]]
+        work_cap = tlen * (mag + 1.0)
+        scale_vol = area * (mag + 1.0)
+        x = [scale_vol, area, work_cap, tlen, mag, wid]
         xdf = pd.DataFrame(columns=in_cols)
         xdf.loc[0] = x
-        x_norm = DATA_NORM.transform(xdf).to_numpy()
+        x_norm = REGR_DATA_NORM.transform(xdf).to_numpy()
         cas_pred = CAS_MODEL.predict(x_norm)[0]
         dmg_pred = DMG_MODEL.predict(x_norm)[0]
         cas_pred = cas_pred if cas_pred > float(0) else 0
@@ -180,14 +179,11 @@ def get_wind_data_df(df):
 # sets up casualty prediction tab
 def _setup_casualty_tab(cas_tab):
     # user input variables, used in loop to make widget creation cleaner
-    cas_user_inputs = ["Month", "Day", "State", "Magnitude",
-                       "Track Length (mi)", "Storm Width (yd)"]
-    input_lims = {"Month": [1,12,1], "Day": [1,31,1], "Magnitude": [0,5,0.5],
+    cas_user_inputs = ["EF Magnitude", "Track Length (mi)", "Storm Width (yd)"]
+    input_lims = {"EF Magnitude": [0,5,0.5],
                   "Track Length (mi)": [0.0,1000.0,0.01],
                   "Storm Width (yd)": [0.0,10000.0,0.01]}
-    tools_tips = ["Number of month, i.e. January = 1",
-                  "Day of month", "State abbreviation",
-                  "EF-Scale magnitude", "Length of storm track in miles",
+    tools_tips = ["EF-Scale magnitude (EF0 - EF5)", "Length of storm track in miles",
                   "Width of storm in yards"]
     # relative y step increase for each label (label spacing)
     lstep = 1.0 / (len(cas_user_inputs)+1)
