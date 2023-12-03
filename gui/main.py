@@ -18,7 +18,7 @@ WIND = None
 DATA_LOADED_REGRESSION = False
 RANKS_PATH = "data\\state_ranks.pkl"
 CAS_MODEL_PATH = "models\\lr_0-01_ni_50000_r_1-0_cas_model.pkl"
-DMG_MODEL_PATH = "models\\lr_0-005005_ni_125000_r_0-5_dmg_model.pkl"
+DMG_MODEL_PATH = "models\\lr_0-005005_ni_50000_r_0-0_dmg_model.pkl"
 REGR_NORM_PATH = "models\\regr_data_norm.pkl"
 with open(RANKS_PATH, "rb") as f:
     RANKS = pickle.load(f)

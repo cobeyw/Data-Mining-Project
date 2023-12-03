@@ -47,7 +47,7 @@ def process_csv(csv_path, target, outlier_cutoff):
     # remove outliers based on user-provided outlier cutoff
     nrow_before = df.shape[0]
     if outlier_cutoff is not None:
-        df = df[df[target] <= outlier_cutoff]
+        df = df[(df[target] >= outlier_cutoff) & (df[target] < 1e6)]
     nrow_after = df.shape[0]
     row_rem = nrow_before - nrow_after
     rem_pct = 100.0 * (row_rem / nrow_before)
@@ -103,7 +103,7 @@ if __name__ == "__main__":
     x_cols = ["scale_vol", "area", "work_cap", "len", "mag", "wid"]
 
     target = input("Choose target col: ")
-    outlier_cutoff = float(input("Choose outlier max cutoff (-1 for None): ")) # dmg = 1e6, cas = -1
+    outlier_cutoff = float(input("Choose outlier min cutoff (-1 for None): ")) # dmg = 1e6, cas = -1
     outlier_cutoff = None if outlier_cutoff < 0 else outlier_cutoff
 
     df = process_csv(CSV_PATH, target, outlier_cutoff)
@@ -151,7 +151,7 @@ if __name__ == "__main__":
         lm.cv_r2 = cv_r2
         lm.cv_rmse = cv_rmse
     else:
-        lr, ni = (1e-2, 50000)
+        lr, ni = (0.005005, 125000)
         lm = LinearRegression(l_rate=lr, n_iter=int(ni))
 
     # fit model
