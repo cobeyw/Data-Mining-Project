@@ -1,5 +1,4 @@
 import numpy as np
-from statistics import stdev
 import pickle
 import pandas as pd
 
@@ -137,7 +136,7 @@ class ZNormalizer:
         nrow = float(X.shape[0])        # get number of rows
         for col in X.columns.values:    # for each column
             mean = (sum(X[col]) / nrow) # get the mean value for this column
-            std = stdev(X[col])         # get st dev for this column
+            std = X[col].std()          # get st dev for this column
             self.__mean[col] = mean     # record these metrics
             self.__stdev[col] = std
         self.__is_fit = True            # record the data is fit

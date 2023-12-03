@@ -25,13 +25,18 @@ Returns:
 """
 def process_csv(csv_path, target, outlier_cutoff):
     df = pd.read_csv(csv_path)
-
+    # get only full track data
+    df = df[(df["ns"] == 1) & (df["sg"] == 1) & (df["sn"] == 1)]
     # preprocessing stuff, drop mag == -9 rows, replace gust NaNs with 0
     na_cols = ["max_gust","min_gust","mean_gust","sd_gust","median_gust"]
     df = df[df.mag != -9]
     df[na_cols] = df[na_cols].fillna(0)
-    print("Adding aggregate target columns")
-    df["cas"] = df["inj"] + df["fat"]           # casualty target column
+    print("Adding feature interaction columns")
+    # adding interaction features
+    df["cas"] = df["inj"] + df["fat"]           
+    df["latlong_area"] = df["abs_dlat"] * df["abs_dlon"]
+    df["work_cap"] = df["len"] * (df["mag"] + 1.0)
+    df["scale_vol"] = df["area"] * (df["mag"] + 1.0)
     print("Encoding states")                    
     df = encode_states(df)                      # encoding state column such tha it becomes the state tornado rank
     print("Encoding loss")
@@ -92,13 +97,20 @@ if __name__ == "__main__":
     number of iterations and learning rates for the LinearRegression
     model in order to find the best-performing combo.
     """
-    x_cols = ["state_rank","mag","len","wid","area","mean_gust","max_gust"]
+    #x_cols = ["state_rank","mag","len","wid","area","mean_gust","max_gust"]
+    #x_cols = ["area", "mag", "wid", "mean_gust", "max_gust", "len", "min_gust","yr"]
+    #x_cols = ["scale_vol", "area", "work_cap", "len", "mag"]
+    x_cols = ["scale_vol", "area", "work_cap", "len", "mag", "wid"]
 
     target = input("Choose target col: ")
     outlier_cutoff = float(input("Choose outlier max cutoff (-1 for None): ")) # dmg = 1e6, cas = -1
     outlier_cutoff = None if outlier_cutoff < 0 else outlier_cutoff
 
     df = process_csv(CSV_PATH, target, outlier_cutoff)
+    # do_not_include = ["inj","fat","loss","closs","cas","dmg","cas_ratio","st","date","time",
+    #                    "ns","sn","sg","om","f1","f2","f3","f4","fc","stf","stn"]
+    # x_cols = [c for c in df.columns.values if c not in do_not_include]
+    # print(x_cols)
 
     # looking at the spread of target so we can shape the training data
     # to have about an equal number of tornados with and without target 
@@ -113,13 +125,13 @@ if __name__ == "__main__":
     plt.show()
 
     try:
-        f = open("models\\data_norm.pkl", "rb")
-        znorm = pickle.load(f)
-        X = znorm.transform(X).to_numpy(dtype="float32")
+        with open("models\\regr_data_norm.pkl", "rb") as f:
+            znorm = pickle.load(f)
+            X = znorm.transform(X).to_numpy(dtype="float32")
     except FileNotFoundError:
         znorm = ZNormalizer()
         X = znorm.fit_transform(X).to_numpy(dtype="float32")
-        with open("models\\data_norm.pkl", "wb") as f:
+        with open("models\\regr_data_norm.pkl", "wb") as f:
             pickle.dump(znorm, f)
     Y = df[target].to_numpy(dtype="float32")
 
