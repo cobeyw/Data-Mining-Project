@@ -151,7 +151,7 @@ if __name__ == "__main__":
         lm.cv_r2 = cv_r2
         lm.cv_rmse = cv_rmse
     else:
-        lr, ni = (1e-2, 200000)
+        lr, ni = (1e-2, 50000)
         lm = LinearRegression(l_rate=lr, n_iter=int(ni))
 
     # fit model
@@ -173,8 +173,15 @@ if __name__ == "__main__":
 
     # plot test performance
     obs = np.arange(y_test.shape[0])
-    step = 2
-    mets = f"RMSE = {rmse(y_test, y_pred):.4f}, R^2 = {r_squared(y_test, y_pred):.4f}"
+    step = 20
+    mets = (
+            f"Test/train RMSE = {rmse(y_test, y_pred):.4f}/{train_err:.4f}\n"
+            f"Test/train R^2 = {r_squared(y_test, y_pred):.4f}/{train_r2:.4f}"
+    )
+    outs = sorted(list(zip(y_pred, y_test)), key=lambda x: x[1])
+    y_pred = [x[0] for x in outs]
+    y_test = [x[1] for x in outs]
+
     plt.title(mets)
     plt.scatter(obs[::step], y_test[::step], color="blue", label="Ground Truth")
     plt.plot(obs[::step], y_pred[::step], color="red", label="predicted")
