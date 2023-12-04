@@ -259,6 +259,7 @@ def _run_prediction_mag(user_inputs: dict, outputs: dict):
     if DATA_LOADED_CLASSIFICATION:
         x_in_og = x_in.copy()
         # create columns for predictions
+        EF0preds = [0] * len(x_in_og)
         EF1preds = [0] * len(x_in_og)
         EF2preds = [0] * len(x_in_og)
         EF3preds = [0] * len(x_in_og)
@@ -268,14 +269,16 @@ def _run_prediction_mag(user_inputs: dict, outputs: dict):
         for i, row in x_in_og.iterrows():
             magnitudes = classifier.classify(row.mo, row.len, row.wid, row.seconds, row.slat, row.slon, row.max_gust)
             #count occurances of EF values to get percent
-            EFcounts = [0,0,0,0,0] #store occurances of each ef val
+            EFcounts = [0, 0,0,0,0,0] #store occurances of each ef val
             for mag in magnitudes: EFcounts[mag] += 1
-            EF1preds[i] = EFcounts[0]/len(magnitudes) * 100
-            EF2preds[i] = EFcounts[1]/len(magnitudes) * 100
-            EF3preds[i] = EFcounts[2]/len(magnitudes) * 100
-            EF4preds[i] = EFcounts[3]/len(magnitudes) * 100
-            EF5preds[i] = EFcounts[4]/len(magnitudes) * 100
+            EF0preds[i] = EFcounts[0]/len(magnitudes) * 100
+            EF1preds[i] = EFcounts[1]/len(magnitudes) * 100
+            EF2preds[i] = EFcounts[2]/len(magnitudes) * 100
+            EF3preds[i] = EFcounts[3]/len(magnitudes) * 100
+            EF4preds[i] = EFcounts[4]/len(magnitudes) * 100
+            EF5preds[i] = EFcounts[5]/len(magnitudes) * 100
         #add columns and write prediction csv
+        x_in_og['EF0_Prediction'] = EF0preds
         x_in_og['EF1_Prediction'] = EF1preds
         x_in_og['EF2_Prediction'] = EF2preds
         x_in_og['EF3_Prediction'] = EF3preds
@@ -298,43 +301,56 @@ def _run_prediction_mag(user_inputs: dict, outputs: dict):
         magnitudes = classifier.classify(month, length, width, time, slat, slon, max_gust)
 
         #find most common magnitude
-        EFcounts = [0,0,0,0,0] #store occurances of each ef val
+        EFcounts = [0,0,0,0,0,0] #store occurances of each ef val
         for mag in magnitudes: EFcounts[mag] += 1
 
         #write predicition outputs
-        outputs["EF 1 Confidence"].config(text=f"{(EFcounts[0]/len(magnitudes) * 100):.2f}%")
-        outputs["EF 2 Confidence"].config(text=f"{(EFcounts[1]/len(magnitudes) * 100):.2f}%")
-        outputs["EF 3 Confidence"].config(text=f"{(EFcounts[2]/len(magnitudes) * 100):.2f}%")
-        outputs["EF 4 Confidence"].config(text=f"{(EFcounts[3]/len(magnitudes) * 100):.2f}%")
-        outputs["EF 5 Confidence"].config(text=f"{(EFcounts[4]/len(magnitudes) * 100):.2f}%")
+        outputs["EF 0 Confidence"].config(text=f"{(EFcounts[0]/len(magnitudes) * 100):.2f}%")
+        outputs["EF 1 Confidence"].config(text=f"{(EFcounts[1]/len(magnitudes) * 100):.2f}%")
+        outputs["EF 2 Confidence"].config(text=f"{(EFcounts[2]/len(magnitudes) * 100):.2f}%")
+        outputs["EF 3 Confidence"].config(text=f"{(EFcounts[3]/len(magnitudes) * 100):.2f}%")
+        outputs["EF 4 Confidence"].config(text=f"{(EFcounts[4]/len(magnitudes) * 100):.2f}%")
+        outputs["EF 5 Confidence"].config(text=f"{(EFcounts[5]/len(magnitudes) * 100):.2f}%")
         
         # highlight the highest confidence
-        mag_pred = np.argmax(EFcounts) + 1 # mode of magnitudes. if tie use lower EF
+        mag_pred = np.argmax(EFcounts) # mode of magnitudes. if tie use lower EF
+        if mag_pred == 0:
+            outputs["EF 0 Confidence"].config(bg="yellow")
+            outputs["EF 1 Confidence"].config(bg="white")
+            outputs["EF 2 Confidence"].config(bg="white")
+            outputs["EF 3 Confidence"].config(bg="white")
+            outputs["EF 4 Confidence"].config(bg="white")
+            outputs["EF 5 Confidence"].config(bg="white")
         if mag_pred == 1:
+            outputs["EF 0 Confidence"].config(bg="white")
             outputs["EF 1 Confidence"].config(bg="yellow")
             outputs["EF 2 Confidence"].config(bg="white")
             outputs["EF 3 Confidence"].config(bg="white")
             outputs["EF 4 Confidence"].config(bg="white")
             outputs["EF 5 Confidence"].config(bg="white")
         if mag_pred == 2:
+            outputs["EF 0 Confidence"].config(bg="white")
             outputs["EF 1 Confidence"].config(bg="white")
             outputs["EF 2 Confidence"].config(bg="yellow")
             outputs["EF 3 Confidence"].config(bg="white")
             outputs["EF 4 Confidence"].config(bg="white")
             outputs["EF 5 Confidence"].config(bg="white")    
         if mag_pred == 3:
+            outputs["EF 0 Confidence"].config(bg="white")
             outputs["EF 1 Confidence"].config(bg="white")
             outputs["EF 2 Confidence"].config(bg="white")
             outputs["EF 3 Confidence"].config(bg="yellow")
             outputs["EF 4 Confidence"].config(bg="white")
             outputs["EF 5 Confidence"].config(bg="white")
         if mag_pred == 4:
+            outputs["EF 0 Confidence"].config(bg="white")
             outputs["EF 1 Confidence"].config(bg="white")
             outputs["EF 2 Confidence"].config(bg="white")
             outputs["EF 3 Confidence"].config(bg="white")
             outputs["EF 4 Confidence"].config(bg="yellow")
             outputs["EF 5 Confidence"].config(bg="white")
         if mag_pred == 5:
+            outputs["EF 0 Confidence"].config(bg="white")
             outputs["EF 1 Confidence"].config(bg="white")
             outputs["EF 2 Confidence"].config(bg="white")
             outputs["EF 3 Confidence"].config(bg="white")
@@ -376,7 +392,7 @@ def _setup_mag_tab(mag_tab):
     tools_tips = ["Month occurred January=1 December = 12", "Length of storm track in miles",
                   "Width of storm in yards", "Time on Ground in seconds ~100", "Latitude of where tornado started ~-100", "Longitude of where tornado started", "Maximum gust record in mph"]
     # relative y step increase for each label (label spacing)
-    lstep = 1.0 / (len(mag_user_inputs)+1)
+    lstep = 0.8 / (len(mag_user_inputs)+1)
     # widget width
     wid = 0.2
     # starting x position
@@ -408,8 +424,8 @@ def _setup_mag_tab(mag_tab):
             user_inputs[s] = t
 
     # prediction outputs, similar setup to user inputs but on the other side
-    outputs = ["EF 1 Confidence", "EF 2 Confidence", "EF 3 Confidence", "EF 4 Confidence", "EF 5 Confidence"]
-    tools_tips = ["Likeliness that tornado is EF1", "Likeliness that tornado is EF2", "Likeliness that tornado is EF3", "Likeliness that tornado is EF4", "Likeliness that tornado is EF5"]
+    outputs = ["EF 0 Confidence", "EF 1 Confidence", "EF 2 Confidence", "EF 3 Confidence", "EF 4 Confidence", "EF 5 Confidence"]
+    tools_tips = ["Likeliness that tornado is EF0", "Likeliness that tornado is EF1", "Likeliness that tornado is EF2", "Likeliness that tornado is EF3", "Likeliness that tornado is EF4", "Likeliness that tornado is EF5"]
     output_labels = {}
     new_xpos = 0.5+xpos
     preds = tk.Label(mag_tab, text="Predictions", bg="LightGoldenrod1")

@@ -13,24 +13,27 @@ class KNearestClassifier() :
 
         # replace NaN values of gusts with mode for each EF rating #TODO try mean
         # split dataframe by ef value
-        EF1Data = self.params.loc[df["mag"] == 0 ]
+        EF0Data = self.params.loc[df["mag"] == 0 ]
+        EF0Data = [gust for gust in EF0Data.max_gust if str(gust) != 'nan' and gust != 0]
+        EF1Data = self.params.loc[df["mag"] == 1 ]
         EF1Data = [gust for gust in EF1Data.max_gust if str(gust) != 'nan' and gust != 0]
-        EF2Data = self.params.loc[df["mag"] == 1 ]
+        EF2Data = self.params.loc[df["mag"] == 2 ]
         EF2Data = [gust for gust in EF2Data.max_gust if str(gust) != 'nan' and gust != 0]
-        EF3Data = self.params.loc[df["mag"] == 2 ]
+        EF3Data = self.params.loc[df["mag"] == 3 ]
         EF3Data = [gust for gust in EF3Data.max_gust if str(gust) != 'nan' and gust != 0]
-        EF4Data = self.params.loc[df["mag"] == 3 ]
+        EF4Data = self.params.loc[df["mag"] == 4 ]
         EF4Data = [gust for gust in EF4Data.max_gust if str(gust) != 'nan' and gust != 0]
-        EF5Data = self.params.loc[df["mag"] == 4 ]
+        EF5Data = self.params.loc[df["mag"] == 5 ]
         EF5Data = [gust for gust in EF5Data.max_gust if str(gust) != 'nan' and gust != 0]
 
         # replace in NaN main data frame
         for row in self.params.itertuples():
-            if row[8] == 0 and np.isnan(row[7]): self.params.at[row[0], 'max_gust'] = sum(EF1Data) / len(EF1Data)
-            if row[8] == 1 and np.isnan(row[7]): self.params.at[row[0], 'max_gust'] = sum(EF2Data) / len(EF2Data)
-            if row[8] == 2 and np.isnan(row[7]): self.params.at[row[0], 'max_gust'] = sum(EF3Data) / len(EF3Data)
-            if row[8] == 3 and np.isnan(row[7]): self.params.at[row[0], 'max_gust'] = sum(EF4Data) / len(EF4Data)
-            if row[8] == 4 and np.isnan(row[7]): self.params.at[row[0], 'max_gust'] = sum(EF5Data) / len(EF5Data)
+            if row[8] == 0 and np.isnan(row[7]): self.params.at[row[0], 'max_gust'] = sum(EF0Data) / len(EF0Data)
+            if row[8] == 1 and np.isnan(row[7]): self.params.at[row[0], 'max_gust'] = sum(EF1Data) / len(EF1Data)
+            if row[8] == 2 and np.isnan(row[7]): self.params.at[row[0], 'max_gust'] = sum(EF2Data) / len(EF2Data)
+            if row[8] == 3 and np.isnan(row[7]): self.params.at[row[0], 'max_gust'] = sum(EF3Data) / len(EF3Data)
+            if row[8] == 4 and np.isnan(row[7]): self.params.at[row[0], 'max_gust'] = sum(EF4Data) / len(EF4Data)
+            if row[8] == 5 and np.isnan(row[7]): self.params.at[row[0], 'max_gust'] = sum(EF5Data) / len(EF5Data)
 
         # store maximum values of paramters
         self.monthMax = max(abs(self.params['mo'])) 
@@ -44,7 +47,7 @@ class KNearestClassifier() :
     def classify(self, monthIn, lengthIn, widthIn, time, latIn, lonIn, gustIn):
         K=11 
         neighborDists = [100] * K
-        neighborClass = [0] * K # 0=ef1,1=ef2,2=ef3,3=ef4,4=ef5
+        neighborClass = [0] * K # 0=ef0,1=ef1,2=ef2,3=ef3,4=ef4,5=ef5
         #interate through stored params
         for row in self.params.itertuples():
             #print(row[0]) #print index TODO REMOVE
@@ -79,31 +82,32 @@ if __name__ == "__main__":
     classifier = KNearestClassifier(training_set)
 
     #iterate eval_set in the classifier. count number of accurate classifications
-    numberCorrect = [0,0,0,0,0] #store number correct per EF value
+    numberCorrect = [0,0,0,0,0,0] #store number correct per EF value
     count = 0
     for i, row in eval_set.iterrows():
         count += 1
         print (str(count) + "/" + str(len(eval_set))) #print progress
         magnitudes = classifier.classify(row.mo, row.len, row.wid, row.seconds, row.slat, row.slon, row.max_gust)
         #find most common magnitude
-        EFcounts = [0,0,0,0,0] #store occurances of each ef val
-        for mag in magnitudes: 
-            if mag > 4: continue
-            EFcounts[mag] += 1
+        EFcounts = [0,0,0,0,0,0] #store occurances of each ef val
+        for mag in magnitudes: EFcounts[mag] += 1
+
         mag_pred = np.argmax(EFcounts) # mode of magnitudes. if tie use lower EF
         if (mag_pred == row.mag): 
             numberCorrect[mag_pred] += 1
             print("correct " + str(mag_pred))
 
-    print("EF1 accuracy")
+    print("EF0 accuracy")
     print(numberCorrect[0]/len(eval_set.loc[df["mag"] == 0 ]))
-    print("EF2 accuracy")    
+    print("EF1 accuracy")    
     print(numberCorrect[1]/len(eval_set.loc[df["mag"] == 1 ]))
-    print("EF3 accuracy")
+    print("EF2 accuracy")
     print(numberCorrect[2]/len(eval_set.loc[df["mag"] == 2 ]))
-    print("EF4 accuracy")
+    print("EF3 accuracy")
     print(numberCorrect[3]/len(eval_set.loc[df["mag"] == 3 ]))
-    print("EF5 accuracy")
+    print("EF4 accuracy")
     print(numberCorrect[4]/len(eval_set.loc[df["mag"] == 4 ]))
+    print("EF5 accuracy")
+    print(numberCorrect[5]/len(eval_set.loc[df["mag"] == 5 ]))
     print("Overall accuracy")
     print(sum(numberCorrect)/len(eval_set))
