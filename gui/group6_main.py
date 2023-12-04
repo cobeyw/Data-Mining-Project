@@ -10,6 +10,7 @@ import sys
 
 sys.path.append("algorithms")
 import k_nearest_classifier
+from clustering import k_means, cluster_statistics, process_csv
 
 # CONSTANTS
 MI_TO_YD = 1760.0
@@ -49,7 +50,6 @@ def _run_prediction_reg(user_inputs: dict, outputs: dict):
         x_in = x_in.replace({"st": RANKS})
         x_in = x_in.rename(columns={"st": "state_rank"})
         x_in = x_in[in_cols]
-        print(x_in)
         x_norm = REGR_DATA_NORM.transform(x_in).to_numpy()
         cas_pred = CAS_MODEL.predict(x_norm)
         dmg_pred = DMG_MODEL.predict(x_norm)
@@ -451,6 +451,85 @@ def _setup_mag_tab(mag_tab):
     clear_button.place(relx=0.5, rely=0.7, relwidth=wid)
     pred_button.place(relx=0.5, rely=0.9, relwidth=wid)
 
+def _run_clustering(csv_path, mode_state_stat, mean_mag_stat, mean_loss_stat, mean_area_stat, mean_cas_ratio_stat):
+    try:
+        # Load CSV data
+        data = process_csv(csv_path)
+
+        # Perform clustering
+        k = 4 
+        centroids, labels = k_means(data, k)
+
+        # Calculate and display clustering statistics
+        stats = cluster_statistics(data, labels)
+
+        # Update statistics labels for each cluster
+        mode_state_stat.config(text="\n".join([f"Cluster {i}: {val}" for i, val in enumerate(stats['Mode_State'], 1)]))
+        mean_mag_stat.config(text="\n".join([f"Cluster {i}: {val}" for i, val in enumerate(stats['Mean_Mag'], 1)]))
+        mean_loss_stat.config(text="\n".join([f"Cluster {i}: {val}" for i, val in enumerate(stats['Mean_Loss'], 1)]))
+        mean_area_stat.config(text="\n".join([f"Cluster {i}: {val}" for i, val in enumerate(stats['Mean_Area'], 1)]))
+        mean_cas_ratio_stat.config(text="\n".join([f"Cluster {i}: {val}" for i, val in enumerate(stats['Mean_Cas_Ratio'], 1)]))
+
+    except Exception as e:
+        # Show the error
+        messagebox.showerror("Error", f"Error: {str(e)}")
+
+def _load_csv_and_run_clustering(mode_state_stat, mean_mag_stat, mean_loss_stat, mean_area_stat, mean_cas_ratio_stat):
+    csv_path = simpledialog.askstring(title="", prompt="Enter CSV file path: ")
+    if csv_path:
+        _run_clustering(csv_path, mode_state_stat, mean_mag_stat, mean_loss_stat, mean_area_stat, mean_cas_ratio_stat)
+
+
+def _clear_clustering_stats(mode_state_stat, mean_mag_stat, mean_loss_stat, mean_area_stat, mean_cas_ratio_stat):
+    mode_state_stat.config(text="")
+    mean_mag_stat.config(text="")
+    mean_loss_stat.config(text="")
+    mean_area_stat.config(text="")
+    mean_cas_ratio_stat.config(text="")
+
+def _setup_clustering_tab(clustering_tab):
+    wid = 0.2
+    xpos = 0.5
+    lstep = .1
+
+    mode_state_label = tk.Label(clustering_tab, text="Mode State:", bg="LightGoldenrod1")
+    mean_mag_label = tk.Label(clustering_tab, text="Mean Magnitude:", bg="LightGoldenrod1")
+    mean_loss_label = tk.Label(clustering_tab, text="Mean Loss:", bg="LightGoldenrod1")
+    mean_area_label = tk.Label(clustering_tab, text="Mean Area:", bg="LightGoldenrod1")
+    mean_cas_ratio_label = tk.Label(clustering_tab, text="Mean Casualty Ratio:", bg="LightGoldenrod1")
+
+    mode_state_label.place(relx=0.0, rely=(lstep), anchor="nw", relwidth=wid, relheight=0.25)
+    mean_mag_label.place(relx=0.0, rely=(4 * lstep), anchor="nw", relwidth=wid, relheight=0.25)
+    mean_loss_label.place(relx=0.0, rely=(7 * lstep), anchor="nw", relwidth=wid, relheight=0.25)
+    mean_area_label.place(relx=0.5, rely=(lstep), anchor="nw", relwidth=wid, relheight=0.25)
+    mean_cas_ratio_label.place(relx=0.5, rely=(4 * lstep), anchor="nw", relwidth=wid, relheight=0.25)
+
+    # Create labels for each statistic
+    mode_state_stat = tk.Label(clustering_tab, text="", bg="white")
+    mean_mag_stat = tk.Label(clustering_tab, text="", bg="white")
+    mean_loss_stat = tk.Label(clustering_tab, text="", bg="white")
+    mean_area_stat = tk.Label(clustering_tab, text="", bg="white")
+    mean_cas_ratio_stat = tk.Label(clustering_tab, text="", bg="white")
+
+    # Set the labels place in the GUI
+    mode_state_stat.place(relx=0.2, rely=(lstep), anchor="nw", relwidth=wid, relheight=0.25)
+    mean_mag_stat.place(relx=0.2, rely=(4 * lstep), anchor="nw", relwidth=wid, relheight=0.25)
+    mean_loss_stat.place(relx=0.2, rely=(7 * lstep), anchor="nw", relwidth=wid, relheight=0.25)
+    mean_area_stat.place(relx=0.7, rely=(lstep), anchor="nw", relwidth=wid, relheight=0.25)
+    mean_cas_ratio_stat.place(relx=0.7, rely=(4 * lstep), anchor="nw", relwidth=wid, relheight=0.25)
+
+     # Add a button to load CSV and run clustering
+    load_button = tk.Button(clustering_tab, text="Load CSV and Cluster",
+                        command=lambda: _load_csv_and_run_clustering(mode_state_stat, mean_mag_stat, mean_loss_stat, mean_area_stat, mean_cas_ratio_stat),
+                        bg="navy", fg="white", relief="raised")
+    load_button.place(relx=0.3, rely=0.0, relwidth=wid)
+
+    # Add a button to clear clustering statistics
+    clear_button = tk.Button(clustering_tab, text="Clear Clustering Stats",
+                             command=lambda: _clear_clustering_stats(mode_state_stat, mean_mag_stat, mean_loss_stat, mean_area_stat, mean_cas_ratio_stat),
+                             bg="tomato", relief="raised")
+    clear_button.place(relx=0.5, rely=0.0, relwidth=wid)
+
 if __name__ == "__main__":
     # WINDOW SETUP
     window = tk.Tk()
@@ -467,5 +546,6 @@ if __name__ == "__main__":
     
     _setup_casualty_tab(cas_tab)
     _setup_mag_tab(mag_tab)
+    _setup_clustering_tab(pro_tab)
 
     window.mainloop()
