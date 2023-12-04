@@ -292,7 +292,7 @@ def _run_prediction_mag(user_inputs: dict, outputs: dict):
         month = float(user_inputs["Month (number)"].get())
         length = float(user_inputs["Track Length (mi)"].get())
         width = float(user_inputs["Storm Width (yd)"].get())
-        time = float(user_inputs["Time on Ground (seconds)"].get())
+        time = float(user_inputs["Seconds Since Midnight"].get())
         slat = float(user_inputs["Starting Latitude"].get())
         slon = float(user_inputs["Starting Longitude"].get())
         max_gust = float(user_inputs["Maximum Gust (mph)"].get())
@@ -380,17 +380,17 @@ def _clear_csv_data_mag(pred_button):
 
 def _setup_mag_tab(mag_tab):
     # user input variables, used in loop to make widget creation cleaner
-    mag_user_inputs = ["Month (number)", "Track Length (mi)", "Storm Width (yd)", "Time on Ground (seconds)", "Starting Latitude", "Starting Longitude", "Maximum Gust (mph)"]
+    mag_user_inputs = ["Month (number)", "Track Length (mi)", "Storm Width (yd)", "Seconds Since Midnight", "Starting Latitude", "Starting Longitude", "Maximum Gust (mph)"]
     input_lims = {"Month (number)": [1,12,1],
                   "Track Length (mi)": [0.0,1000.0,0.01],
                   "Storm Width (yd)": [0.0,10000.0,0.01],
-                  "Time on Ground (seconds)": [0.0,100000.0,0.01],
+                  "Seconds Since Midnight": [0.0,100000.0,0.01],
                   "Starting Latitude": [0.0,200.0,0.01],
                   "Starting Longitude": [-200,0,0.01],
                   "Maximum Gust (mph)": [0.0,500.0,0.01]}
     
     tools_tips = ["Month occurred January=1 December = 12", "Length of storm track in miles",
-                  "Width of storm in yards", "Time on Ground in seconds ~100", "Latitude of where tornado started ~-100", "Longitude of where tornado started", "Maximum gust record in mph"]
+                  "Width of storm in yards", "Seconds passed since midnight (hours * 3600)", "Latitude of where tornado started ~-100", "Longitude of where tornado started", "Maximum gust record in mph"]
     # relative y step increase for each label (label spacing)
     lstep = 0.8 / (len(mag_user_inputs)+1)
     # widget width
