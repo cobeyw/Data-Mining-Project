@@ -7,7 +7,9 @@ import pickle
 import pandas as pd
 import numpy as np
 import sys
+
 sys.path.append("algorithms")
+import k_nearest_classifier
 
 # CONSTANTS
 MI_TO_YD = 1760.0
@@ -16,6 +18,7 @@ CSV_PATH = "data\\tornado_wind_data.csv"
 WIND_CSV_PATH = "data\\wind.csv"
 WIND = None
 DATA_LOADED_REGRESSION = False
+DATA_LOADED_CLASSIFICATION = False
 RANKS_PATH = "data\\state_ranks.pkl"
 CAS_MODEL_PATH = "models\\lr_0-01_ni_50000_r_1-0_cas_model.pkl"
 DMG_MODEL_PATH = "models\\lr_0-005005_ni_50000_r_0-0_dmg_model.pkl"
@@ -245,6 +248,209 @@ def _setup_casualty_tab(cas_tab):
     clear_button.place(relx=0.5, rely=0.7, relwidth=wid)
     pred_button.place(relx=0.5, rely=0.9, relwidth=wid)
 
+# prediction button response
+# Calculates predicted EF values based on manual input or CSV
+def _run_prediction_mag(user_inputs: dict, outputs: dict):
+    global x_in
+    df = pd.read_csv(CSV_PATH)
+    classifier = k_nearest_classifier.KNearestClassifier(df)
+    
+    # If csv input loaded, iterate through inputs and write predictions to csv
+    if DATA_LOADED_CLASSIFICATION:
+        x_in_og = x_in.copy()
+        # create columns for predictions
+        EF0preds = [0] * len(x_in_og)
+        EF1preds = [0] * len(x_in_og)
+        EF2preds = [0] * len(x_in_og)
+        EF3preds = [0] * len(x_in_og)
+        EF4preds = [0] * len(x_in_og)
+        EF5preds = [0] * len(x_in_og)
+        #iterate through csv input and fill columns with predictions
+        for i, row in x_in_og.iterrows():
+            magnitudes = classifier.classify(row.mo, row.len, row.wid, row.seconds, row.slat, row.slon, row.max_gust)
+            #count occurances of EF values to get percent
+            EFcounts = [0, 0,0,0,0,0] #store occurances of each ef val
+            for mag in magnitudes: EFcounts[mag] += 1
+            EF0preds[i] = EFcounts[0]/len(magnitudes) * 100
+            EF1preds[i] = EFcounts[1]/len(magnitudes) * 100
+            EF2preds[i] = EFcounts[2]/len(magnitudes) * 100
+            EF3preds[i] = EFcounts[3]/len(magnitudes) * 100
+            EF4preds[i] = EFcounts[4]/len(magnitudes) * 100
+            EF5preds[i] = EFcounts[5]/len(magnitudes) * 100
+        #add columns and write prediction csv
+        x_in_og['EF0_Prediction'] = EF0preds
+        x_in_og['EF1_Prediction'] = EF1preds
+        x_in_og['EF2_Prediction'] = EF2preds
+        x_in_og['EF3_Prediction'] = EF3preds
+        x_in_og['EF4_Prediction'] = EF4preds
+        x_in_og['EF5_Prediction'] = EF5preds
+        x_in_og.to_csv("predictions.csv")
+
+    # If no csv input loaded, calculate prediction based on manual entries
+    else:
+        # get manual inputs
+        month = float(user_inputs["Month (number)"].get())
+        length = float(user_inputs["Track Length (mi)"].get())
+        width = float(user_inputs["Storm Width (yd)"].get())
+        time = float(user_inputs["Time on Ground (seconds)"].get())
+        slat = float(user_inputs["Starting Latitude"].get())
+        slon = float(user_inputs["Starting Longitude"].get())
+        max_gust = float(user_inputs["Maximum Gust (mph)"].get())
+
+        # Use k nearest neighbors to find predicted magnitudes
+        magnitudes = classifier.classify(month, length, width, time, slat, slon, max_gust)
+
+        #find most common magnitude
+        EFcounts = [0,0,0,0,0,0] #store occurances of each ef val
+        for mag in magnitudes: EFcounts[mag] += 1
+
+        #write predicition outputs
+        outputs["EF 0 Confidence"].config(text=f"{(EFcounts[0]/len(magnitudes) * 100):.2f}%")
+        outputs["EF 1 Confidence"].config(text=f"{(EFcounts[1]/len(magnitudes) * 100):.2f}%")
+        outputs["EF 2 Confidence"].config(text=f"{(EFcounts[2]/len(magnitudes) * 100):.2f}%")
+        outputs["EF 3 Confidence"].config(text=f"{(EFcounts[3]/len(magnitudes) * 100):.2f}%")
+        outputs["EF 4 Confidence"].config(text=f"{(EFcounts[4]/len(magnitudes) * 100):.2f}%")
+        outputs["EF 5 Confidence"].config(text=f"{(EFcounts[5]/len(magnitudes) * 100):.2f}%")
+        
+        # highlight the highest confidence
+        mag_pred = np.argmax(EFcounts) # mode of magnitudes. if tie use lower EF
+        if mag_pred == 0:
+            outputs["EF 0 Confidence"].config(bg="yellow")
+            outputs["EF 1 Confidence"].config(bg="white")
+            outputs["EF 2 Confidence"].config(bg="white")
+            outputs["EF 3 Confidence"].config(bg="white")
+            outputs["EF 4 Confidence"].config(bg="white")
+            outputs["EF 5 Confidence"].config(bg="white")
+        if mag_pred == 1:
+            outputs["EF 0 Confidence"].config(bg="white")
+            outputs["EF 1 Confidence"].config(bg="yellow")
+            outputs["EF 2 Confidence"].config(bg="white")
+            outputs["EF 3 Confidence"].config(bg="white")
+            outputs["EF 4 Confidence"].config(bg="white")
+            outputs["EF 5 Confidence"].config(bg="white")
+        if mag_pred == 2:
+            outputs["EF 0 Confidence"].config(bg="white")
+            outputs["EF 1 Confidence"].config(bg="white")
+            outputs["EF 2 Confidence"].config(bg="yellow")
+            outputs["EF 3 Confidence"].config(bg="white")
+            outputs["EF 4 Confidence"].config(bg="white")
+            outputs["EF 5 Confidence"].config(bg="white")    
+        if mag_pred == 3:
+            outputs["EF 0 Confidence"].config(bg="white")
+            outputs["EF 1 Confidence"].config(bg="white")
+            outputs["EF 2 Confidence"].config(bg="white")
+            outputs["EF 3 Confidence"].config(bg="yellow")
+            outputs["EF 4 Confidence"].config(bg="white")
+            outputs["EF 5 Confidence"].config(bg="white")
+        if mag_pred == 4:
+            outputs["EF 0 Confidence"].config(bg="white")
+            outputs["EF 1 Confidence"].config(bg="white")
+            outputs["EF 2 Confidence"].config(bg="white")
+            outputs["EF 3 Confidence"].config(bg="white")
+            outputs["EF 4 Confidence"].config(bg="yellow")
+            outputs["EF 5 Confidence"].config(bg="white")
+        if mag_pred == 5:
+            outputs["EF 0 Confidence"].config(bg="white")
+            outputs["EF 1 Confidence"].config(bg="white")
+            outputs["EF 2 Confidence"].config(bg="white")
+            outputs["EF 3 Confidence"].config(bg="white")
+            outputs["EF 4 Confidence"].config(bg="white")
+            outputs["EF 5 Confidence"].config(bg="yellow")
+
+# load csv button response
+def _load_csv_mag(pred_button):
+    global DATA_LOADED_CLASSIFICATION, x_in
+    csv_path = simpledialog.askstring(title="",
+                                  prompt="Enter CSV file path: ")
+    try:
+        x_in = pd.read_csv(csv_path)
+    except FileNotFoundError:
+        _ = messagebox.showinfo("Error", 
+                                f"File {csv_path} not found")
+        return
+    DATA_LOADED_CLASSIFICATION = True
+    pred_button.config(text="Predict CSV")
+
+# clear csv button response
+def _clear_csv_data_mag(pred_button):
+    global DATA_LOADED_CLASSIFICATION, x_in
+    DATA_LOADED_CLASSIFICATION = False
+    x_in = None
+    pred_button.config(text="Predict")
+
+def _setup_mag_tab(mag_tab):
+    # user input variables, used in loop to make widget creation cleaner
+    mag_user_inputs = ["Month (number)", "Track Length (mi)", "Storm Width (yd)", "Time on Ground (seconds)", "Starting Latitude", "Starting Longitude", "Maximum Gust (mph)"]
+    input_lims = {"Month (number)": [1,12,1],
+                  "Track Length (mi)": [0.0,1000.0,0.01],
+                  "Storm Width (yd)": [0.0,10000.0,0.01],
+                  "Time on Ground (seconds)": [0.0,100000.0,0.01],
+                  "Starting Latitude": [0.0,200.0,0.01],
+                  "Starting Longitude": [-200,0,0.01],
+                  "Maximum Gust (mph)": [0.0,500.0,0.01]}
+    
+    tools_tips = ["Month occurred January=1 December = 12", "Length of storm track in miles",
+                  "Width of storm in yards", "Time on Ground in seconds ~100", "Latitude of where tornado started ~-100", "Longitude of where tornado started", "Maximum gust record in mph"]
+    # relative y step increase for each label (label spacing)
+    lstep = 0.8 / (len(mag_user_inputs)+1)
+    # widget width
+    wid = 0.2
+    # starting x position
+    xpos = 0.01
+    # manual data entry label
+    mde = tk.Label(mag_tab, text="Manual Data Entry", bg="navy", fg="white")
+    mde.place(relx=(wid/2), rely=0.01, anchor="nw", relwidth=wid)
+    # dictionary will hold user input widgets, which get returned so we
+    # can capture user input later
+    user_inputs = {}
+    # user input labels and text boxes
+    for i, s in enumerate(mag_user_inputs):
+        l = tk.Label(mag_tab, text=s, bg="gray60")
+        ypos = (i+1) * lstep
+        l.place(relx=xpos, rely=ypos, ancho="nw", relwidth=wid, relheight=0.05)
+        _ = Hovertip(l, tools_tips[i], hover_delay=500)
+        if s == "State":
+            st = tk.StringVar()
+            st.set("")
+            d = ttk.Combobox(mag_tab, textvariable=st, values=list(RANKS.keys()))
+            d.current(1)
+            d.place(relx=(xpos+wid), rely=ypos, relwidth=wid, relheight=0.05)
+            user_inputs[s] = d
+        else:
+            lim = input_lims[s]
+            t = tk.Spinbox(mag_tab, from_=lim[0], to=lim[1],
+                           increment=lim[2])
+            t.place(relx=(xpos+wid), rely=ypos, relwidth=wid, relheight=0.05)
+            user_inputs[s] = t
+
+    # prediction outputs, similar setup to user inputs but on the other side
+    outputs = ["EF 0 Confidence", "EF 1 Confidence", "EF 2 Confidence", "EF 3 Confidence", "EF 4 Confidence", "EF 5 Confidence"]
+    tools_tips = ["Likeliness that tornado is EF0", "Likeliness that tornado is EF1", "Likeliness that tornado is EF2", "Likeliness that tornado is EF3", "Likeliness that tornado is EF4", "Likeliness that tornado is EF5"]
+    output_labels = {}
+    new_xpos = 0.5+xpos
+    preds = tk.Label(mag_tab, text="Predictions", bg="LightGoldenrod1")
+    preds.place(relx=(new_xpos+(wid/2)), rely=0.01, anchor="nw", relwidth=wid)
+    for i, s in enumerate(outputs):
+        l = tk.Label(mag_tab, text=s, bg="LightGoldenrod1")
+        _ = Hovertip(l, tools_tips[i], hover_delay=500)
+        ypos = (i+1) * lstep
+        l.place(relx=new_xpos, rely=ypos, ancho="nw", relwidth=wid, relheight=0.05)
+        o = tk.Label(mag_tab, text="", bg="white")
+        o.place(relx=(new_xpos+wid), rely=ypos, relwidth=wid, relheight=0.05)
+        output_labels[s] = o
+
+    # buttons
+    pred_button = tk.Button(mag_tab, text="Predict", 
+                            command=lambda: _run_prediction_mag(user_inputs, output_labels),
+                            bg="navy", fg="white", relief="raised")
+    load_button = tk.Button(mag_tab, text="Load CSV", command=lambda: _load_csv_mag(pred_button),
+                            bg="navy", fg="white", relief="raised")
+    clear_button = tk.Button(mag_tab, text="Clear CSV Data", command=lambda: _clear_csv_data_mag(pred_button),
+                            bg="tomato", relief="raised")
+    load_button.place(relx=0.5, rely=0.8, relwidth=wid)
+    clear_button.place(relx=0.5, rely=0.7, relwidth=wid)
+    pred_button.place(relx=0.5, rely=0.9, relwidth=wid)
+
 if __name__ == "__main__":
     # WINDOW SETUP
     window = tk.Tk()
@@ -260,5 +466,6 @@ if __name__ == "__main__":
     nb.pack(expand=1, fill="both") 
     
     _setup_casualty_tab(cas_tab)
+    _setup_mag_tab(mag_tab)
 
     window.mainloop()
