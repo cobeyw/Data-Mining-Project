@@ -467,5 +467,5 @@ if __name__ == "__main__":
     
     _setup_casualty_tab(cas_tab)
     _setup_mag_tab(mag_tab)
-    
+
     window.mainloop()
