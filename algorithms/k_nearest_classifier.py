@@ -72,7 +72,7 @@ if __name__ == "__main__":
 
     # Algorithm Evaluation
     # Split the data set 80/20
-    training_set = df.sample(frac = 0.99)
+    training_set = df.sample(frac = 0.8)
     eval_set = df.drop(training_set.index)
 
     # Create classifier
